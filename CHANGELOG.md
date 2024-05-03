@@ -5,6 +5,8 @@
 - Fixed `prevent_sprinting` power not functioning. [#427](https://github.com/EdwinMindcraft/origins-architectury/issues/427)
 - Fixed `min_duration` field default not accounting for infinite effect durations in `status_effect` condition. [#438](https://github.com/EdwinMindcraft/origins-architectury/issues/438) 
 - Fixed `exposed_to_sky` and `exposed_to_sun` not having the correct block position within negative x and z coordinates. [#439](https://github.com/EdwinMindcraft/origins-architectury/issues/439)
+### For Addon Devs:
+- The PowerType class is no longer abstract, meaning you can instantiate it directly.
 # Calio
 - Fixed registries sometimes not containing any values other than the default on the client. [#423](https://github.com/EdwinMindcraft/origins-architectury/issues/423)
 - Consistent-ify isServerContext with older version fixes.
