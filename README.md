@@ -10,13 +10,13 @@ Then run `gradlew build` in the root directory. The build output is the `unified
 
 ## Creating addons
 
-### 1.7.1.1 and above
-Origins Forge now uses the MerchantPug maven to host its artifacts. To use this, add the following to your gradle build script:
+### 1.10.0.8 and above
+Origins Forge is now hosted on the Ladysnake Maven. To use this, add the following to your gradle build script:
 ```gradle
 repositories {
     ...
     maven {
-        url "https://maven.merchantpug.net"
+        url "https://maven.ladysnake.org/releases"
     }
 }
 
@@ -25,6 +25,26 @@ dependencies {
     implementation fg.deobf("io.github.edwinmindcraft:calio-forge:${calio_forge_version}")
     implementation fg.deobf("io.github.edwinmindcraft:apoli-forge:${apoli_forge_version}")
     implementation fg.deobf("io.github.edwinmindcraft:origins-forge:${origins_forge_version}")
+}
+```
+
+<details>
+
+### 1.7.1.1-1.10.0.7
+Origins Forge now uses the Greenhouse Maven to host its artifacts. To use this, add the following to your gradle build script:
+```gradle
+repositories {
+    ...
+    maven {
+        url "https://maven.greenhouseteam.dev/releases"
+    }
+}
+
+dependencies {
+...
+implementation fg.deobf("io.github.edwinmindcraft:calio-forge:${calio_forge_version}")
+implementation fg.deobf("io.github.edwinmindcraft:apoli-forge:${apoli_forge_version}")
+implementation fg.deobf("io.github.edwinmindcraft:origins-forge:${origins_forge_version}")
 }
 ```
 
@@ -53,6 +73,8 @@ dependencies {
 ```
 
 You can find file ids on [CurseForge](https://www.curseforge.com/minecraft/mc-mods/origins-forge/files).
+</details>
+
 
 ### Backup Mavens
 Viable alternatives if one of these two methods don't work are the [Modrinth Maven](https://docs.modrinth.com/docs/tutorials/maven/) or [JitPack](https://jitpack.io/#EdwinMindcraft/origins-forge) (using a commit hash).
