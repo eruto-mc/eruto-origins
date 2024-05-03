@@ -28,9 +28,16 @@ dependencies {
 }
 ```
 
+You can find each individual version by looking at the [Reposilite maven page](https://maven.ladysnake.org/#/releases/io/github/edwinmindcraft).
+
+Alternatively, you can look at the released JARs on the GitHub releases page of [EdwinMindcraft/origins-architectury](https://github.com/EdwinMindcraft/origins-architectury), just make sure to prefix the version with the Minecraft version as follows: `{minecraft_version}-{origins_forge_version}`.
+
+### Older Versions
 <details>
+<summary>Expand</summary>
 
 ### 1.7.1.1-1.10.0.7
+
 Origins Forge now uses the Greenhouse Maven to host its artifacts. To use this, add the following to your gradle build script:
 ```gradle
 repositories {
@@ -49,9 +56,10 @@ implementation fg.deobf("io.github.edwinmindcraft:origins-forge:${origins_forge_
 ```
 
 You can find each individual version by looking at the [Reposilite maven page](https://maven.merchantpug.net/#/releases/io/github/edwinmindcraft).
-Alternatively, you can look at the released JARs on the GitHub releases page of [EdwinMindcraft/origins-architectury](https://github.com/EdwinMindcraft/origins-architectury).
 
-### Versions prior to 1.7.1.1
+Alternatively, you can look at the released JARs on the GitHub releases page of [EdwinMindcraft/origins-architectury](https://github.com/EdwinMindcraft/origins-architectury), just make sure to prefix the version with the Minecraft version as follows: `{minecraft_version}-{origins_forge_version}`.
+
+### Prior to 1.7.1.1
 The simplest way to load Origins in a dev environment is currently to use
 [Curse Maven](https://www.cursemaven.com/). To do so, add the flowing to your
 gradle build script:
