@@ -39,7 +39,7 @@ allprojects {
 			}
 		}
 		maven { url 'https://jitpack.io' }
-        maven { url 'https://maven.merchantpug.net/releases' }
+		maven { url "https://api.modrinth.com/maven" }
 		mavenCentral()
 		mavenLocal()
 	}
@@ -164,7 +164,7 @@ allprojects {
 
 		//implementation fg.deobf(group: 'me.shedaniel.cloth', name: 'cloth-config-forge', version: "${cloth_config_version}")
 		implementation fg.deobf(group: 'top.theillusivec4.caelus', name: 'caelus-forge', version: "${caelus_version}+1.20")
-		implementation fg.deobf(group: 'de.dafuqs', name: 'additionalentityattributes-forge', version: "${aea_version}+${minecraft_version}", transitive: false)
+		implementation fg.deobf(group: 'maven.modrinth', name: 'additionalentityattributes-forge', version: "${aea_version}+${minecraft_version}", transitive: false)
 	}
 
 	tasks.withType(JavaCompile) {
@@ -215,7 +215,7 @@ project(":apoli") {
 			exclude group: 'net.minecraftforge', module: 'forge'
 		}
 
-		jarJar(group: 'de.dafuqs', name: 'additionalentityattributes-forge', version: "[${aea_version},)", transitive: false) {
+		jarJar(group: 'maven.modrinth', name: 'additionalentityattributes-forge', version: "[${aea_version},)", transitive: false) {
 			jarJar.pin(it, "${aea_version}+${minecraft_version}")
 		}
 
@@ -268,7 +268,7 @@ project(":origins") {
 			exclude group: 'net.minecraftforge', module: 'forge'
 		}
 
-		jarJar(group: 'de.dafuqs', name: 'additionalentityattributes-forge', version: "[${aea_version},)", transitive: false) {
+		jarJar(group: 'maven.modrinth', name: 'additionalentityattributes-forge', version: "[${aea_version},)", transitive: false) {
 			jarJar.pin(it, "${aea_version}+${minecraft_version}")
 		}
 
