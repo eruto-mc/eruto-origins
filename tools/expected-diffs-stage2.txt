@@ -1,0 +1,21 @@
+# 段2 の判定で「説明の付く差」として宣言するもの。
+#
+# ⚠ 突き合わせ先は **当部がいま配っている** jar のほう:
+#     worlds/world-3/dev/instance/mods/origins-forge-1.20.1-1.10.0.9-all-eruto1.jar
+#
+# ⚠⚠ **なぜ配布された素の jar ではないのか**: 段2 の狙いは
+#   「jar の中の class を差し替える手術を、ビルドで再現できたか」なので、
+#   ⚠ **手術済みの物と突き合わせないと判定にならない**。
+#
+#     py -3.12 tools/compare_with_released.py \
+#         --built origins/build/libs/origins-forge-1.20.1-1.10.0.9-all.jar \
+#         --released <当部の -eruto1.jar> \
+#         --allow tools/expected-diffs-stage2.txt
+#
+# ⚠ 1行1つ。`#` から後ろは理由（**必ず書く**）。
+# ⚠ **当たらなかった宣言が在ると落ちる**——期待していた差が消えたということなので、
+#    宣言が古いか、当部の変更が落ちたかのどちらか。放置すると検査が空回りする。
+
+io/github/apace100/apoli/mixin/forge/EarsCompatMixin.class # 配っている jar には入っていない。2026-07-27 にソースだけ直し、Ears を入れていないのでビルドしなかった（dev/docs/client-test-env.md）。ソースから建てると入る
+
+apoli.refmap.json # 配っている jar のものは、当部が手で混ぜたもの。ビルドが作り直すので中身の並びが変わる

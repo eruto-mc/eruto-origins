@@ -215,6 +215,13 @@ project(":apoli") {
 			exclude group: 'net.minecraftforge', module: 'forge'
 		}
 
+		// ⚠ 当部の変更（2026-08-29）: 描画の mixin 6件を @Redirect から
+		//    MixinExtras の @WrapOperation へ書き換えたので、注釈が要る。
+		//    ⚠ **jar には入れない（compileOnly）**——実行時は Forge 47.1.4 以降が
+		//    同梱しており、パック内でも 23 本の MOD が持っている。
+		//    ⚠ 版を上げるときは、当部のパックに入っている実物（0.5.4）と食い違わないか見る。
+		compileOnly 'io.github.llamalad7:mixinextras-common:0.5.0'
+
 		jarJar(group: 'maven.modrinth', name: 'additionalentityattributes-forge', version: "[${aea_version},)", transitive: false) {
 			jarJar.pin(it, "${aea_version}+${minecraft_version}")
 		}

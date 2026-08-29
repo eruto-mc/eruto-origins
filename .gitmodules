@@ -4,8 +4,8 @@
 	branch = 1.20.x/forge
 [submodule "apoli"]
 	path = apoli
-	url = https://github.com/EdwinMindcraft/apoli.git
-	branch = 1.20.x/forge
+	url = https://github.com/erutobusiness/apoli.git
+	branch = eruto/world3-1.20.1
 [submodule "origins"]
 	path = origins
 	url = https://github.com/EdwinMindcraft/origins-architectury.git

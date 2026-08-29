@@ -168,10 +168,31 @@ def walk(javap_path, work, blob_a, blob_b, label, report, problems):
             problems.append(f"⚠⚠ {label} :: {name}")
 
 
+def load_allow(path):
+    """⚠ **説明の付く差**を宣言する表。1行1つ、`#` から後ろは注記。
+
+    ⚠ **これを空にしない**。当部が中身を変えていく以上、差は必ず出る。
+    ⚠ **使われなかった行も報告する**——期待していた差が消えたということなので、
+       宣言のほうが古い（消し忘れ）か、変更が消えたかのどちらか。
+    """
+    allow = {}
+    if not path:
+        return allow
+    with open(path, encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            name, _, why = line.partition("#")
+            allow[name.strip()] = why.strip() or "（理由が書かれていない）"
+    return allow
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--built", default=DEFAULT_BUILT)
     ap.add_argument("--released")
+    ap.add_argument("--allow", help="説明の付く差を宣言した表（tools/expected-diffs-*.txt）")
     args = ap.parse_args()
 
     if not os.path.exists(args.built):
@@ -194,6 +215,7 @@ def main():
     print(f"配布された版: {len(b):,} バイト  {released}")
     print()
 
+    allow = load_allow(args.allow)
     report, problems = {}, []
     walk(javap_path, work, a, b, "origins-forge-all", report, problems)
 
@@ -203,12 +225,34 @@ def main():
         print(f"    {len(report[verdict]):4d} 件  {verdict}")
     print()
 
-    if problems:
-        print(f"!! 説明の付かない差: {len(problems)} 件")
-        for line in problems[:40]:
+    # 宣言してある差を外す。⚠ **どれが使われたかを必ず出す**
+    used, rest = set(), []
+    for line in problems:
+        hit = next((k for k in allow if line.endswith(k)), None)
+        if hit:
+            used.add(hit)
+            continue
+        rest.append(line)
+
+    if allow:
+        print(f"説明の付く差として宣言してあるもの: {len(allow)} 件")
+        for name in sorted(allow):
+            mark = "当たった" if name in used else "⚠ 当たらなかった"
+            print(f"    [{mark}] {name} — {allow[name]}")
+        unused = sorted(set(allow) - used)
+        if unused:
+            print("⚠⚠ 当たらなかった宣言が在る。"
+                  "期待していた差が消えている——宣言が古いか、変更が落ちたかのどちらか")
+        print()
+
+    if rest:
+        print(f"!! 説明の付かない差: {len(rest)} 件")
+        for line in rest[:40]:
             print(f"    {line}")
         return 1
-    print("判定: OK — 説明の付かない差は無い（違いはすべて javac の版で説明が付く）")
+    if allow and set(allow) - used:
+        return 1
+    print("判定: OK — 説明の付かない差は無い")
     return 0
 
 
