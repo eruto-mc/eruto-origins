@@ -35,18 +35,39 @@ import zipfile
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-MODS = (r"c:\@projects\minecraft-club\worlds\world-3\dev\clones"
-        r"\mor-siphon\mods")
-# ⚠ 段3〜4 で1本にまとめる予定のもの（Pehkui は外に残すので入れない）
-TARGETS = [
-    "origins-forge-1.20.1-1.10.0.9-all-eruto1.jar",
-    "origins-classes-forge-1.2.1.jar",
-    "Medieval Origins Revival-6.6.0+1.20.1-forge-eruto1.jar",
-    "origins_umbrellas-1.6.1-eruto1.jar",
-    "solapplepie_origins_fix-1.0.0.jar",
-    "shifting_origins-1.9.1.jar",
-    "orb_layer_variants-1.1.0.jar",
+# ⚠⚠ **配っている実物を見る**（2026-08-30 に直した）。
+#    それまで `clones/mor-siphon/mods`（ある時点の写し）を見ており、
+#    ⚠ **`shifting_origins` が版違いで走査から落ちていた**——
+#    ⚠⚠ **当部が作った物こそ同じパスを持ちやすい**のに、そこが穴になっていた。
+MODS = r"c:\@projects\minecraft-club\worlds\world-3\dev\instance\mods"
+
+# ⚠ 段3〜4 で1本にまとめる予定のもの（Pehkui は外に残すので入れない）。
+#    ⚠ **版を書かない**（書いた瞬間から腐り、黙って走査から落ちる）。名前の頭で当てる。
+TARGET_STEMS = [
+    "origins-forge-",
+    "origins-classes-forge-",
+    "Medieval Origins Revival-",
+    "origins_umbrellas-",
+    "solapplepie_origins_fix-",
+    "shifting_origins-",
+    "orb_layer_variants-",
 ]
+
+
+def resolve_targets():
+    """名前の頭で実物を当てる。⚠ **1つも当たらない頭が在ったら必ず出す**。"""
+    have = sorted(f for f in os.listdir(MODS) if f.endswith(".jar"))
+    found, missing = [], []
+    for stem in TARGET_STEMS:
+        hit = [f for f in have if f.lower().startswith(stem.lower())]
+        if not hit:
+            missing.append(stem)
+        elif len(hit) > 1:
+            print("  ⚠⚠ %s に当たる jar が %d 本ある: %s" % (stem, len(hit), ", ".join(hit)))
+            found.extend(hit)
+        else:
+            found.extend(hit)
+    return found, missing
 
 
 def entries(path):
@@ -77,12 +98,14 @@ def manifest_keys(path):
 
 
 def main():
-    present = [t for t in TARGETS if os.path.exists(os.path.join(MODS, t))]
-    missing = [t for t in TARGETS if t not in present]
-    print("まとめる予定: %d 本（見つかった %d ／ 無い %d）"
-          % (len(TARGETS), len(present), len(missing)))
+    present, missing = resolve_targets()
+    print("見た置き場: %s" % MODS)
+    print("まとめる予定: %d 本（見つかった %d ／ ⚠ 当たらなかった頭 %d）"
+          % (len(TARGET_STEMS), len(present), len(missing)))
+    for name in present:
+        print("     %s" % name)
     for m in missing:
-        print("  ⚠ 見つからない: %s" % m)
+        print("  ⚠⚠ 当たらなかった: %s" % m)
     print()
 
     owners = collections.defaultdict(list)
