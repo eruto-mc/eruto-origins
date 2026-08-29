@@ -1,3 +1,49 @@
+> ## ⚠ これは当部の統合版です（eruto-mc / eruto-origins）
+>
+> 上流: [EdwinMindcraft/origins-forge](https://github.com/EdwinMindcraft/origins-forge)
+> ／ 枝 `eruto/world3-1.20.1` ／ ライセンスは上流に従う（MIT）。
+> **以下は上流の README です。**
+>
+> ### なぜ作ったか
+>
+> 第3ワールドの Origins まわりが **jar 8本・datapack 2つ・リソースパック・config** に
+> 散っており、同じ id を2か所が別々に定義している件が5件（中身は5件とも違う）在った。
+> ⚠ 上流の `origins-forge` は **2024-05-04 の 1.10.0.9 で止まっている**ので、
+> 直すには当部がソースを持つしかない。設計は `minecraft-club` の
+> `worlds/world-3/selection/design/origins-consolidation.md`。
+>
+> ### いまどこまで来ているか（段1）
+>
+> ⚠ **まだ中身を1つも変えていない。** 配布された 1.10.0.9 と同じ物が出ることを確かめる段。
+>
+> | | |
+> | - | - |
+> | 土台 | ⚠ **配布された 1.10.0.9 の地点**（`67e2e0b`）に固定。枝先はその2か月後で、**jar になっていない修正が3件**入っているため |
+> | 当部が入れた変更 | ⚠ **1つだけ**——AEA の取得先を merchantpug から Modrinth へ（上流の `9dc15fe` をそのまま取り込み）。⚠ **取得先のホストが消えていてビルドが落ちるため**。`build.gradle` の4行だけで、コードも版も変わらない |
+> | 判定 | `py -3.12 tools/compare_with_released.py` が **OK**（説明の付かない差 0） |
+>
+> ### 上流の枝先に在る、jar になっていない修正3件
+>
+> ⚠ **段6（上流からの取り込み）で見る。いまは入れていない。**
+>
+> | 課題 | 題名 |
+> | - | - |
+> | [#454](https://github.com/EdwinMindcraft/origins-architectury/issues/454) | ⚠⚠ 以前に作ったワールドで種族の選択画面が出ない |
+> | [#445](https://github.com/EdwinMindcraft/origins-architectury/issues/445) | 層の `gui_title` が効かない |
+> | [#402](https://github.com/EdwinMindcraft/origins-architectury/issues/402) | ブロックに立ったときの耐性が正しく動かない |
+>
+> ### 建て方と確かめ方
+>
+> ```text
+> JAVA_HOME=<17以上> ./gradlew build
+> py -3.12 tools/compare_with_released.py
+> ```
+>
+> ⚠ **`gradlew build` が通っただけでは足りない。** 必ず後者を回す——
+> 配布された物との差を出し、**javac の版で説明が付く差だけか**を判定する
+> （終了コード 0 が正）。⚠ **陰性対照も取ってある**: 当部のパッチ版 jar を
+> `--built` に渡すと、差し替えた5つの mixin と refmap を名指しして落ちる。
+
 # Origins (Forge)
 
 This is the repository that is used to build Origins Forge.
