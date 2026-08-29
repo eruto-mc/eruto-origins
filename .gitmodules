@@ -10,3 +10,14 @@
 	path = origins
 	url = https://github.com/EdwinMindcraft/origins-architectury.git
 	branch = 1.20.x/forge
+[submodule "medieval"]
+	path = medieval
+	url = https://github.com/muon-rw/Medieval-Origins-Revival.git
+	branch = 1.20.1-multiloader
+[submodule "origins-classes"]
+	path = origins-classes
+	url = https://github.com/LimonBlaze/origins-classes-forge.git
+	branch = 1.20.1
+[submodule "umbrellas"]
+	path = umbrellas
+	url = https://github.com/eruto-mc/origins_umbrellas.git
