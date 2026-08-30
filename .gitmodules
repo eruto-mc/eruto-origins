@@ -8,8 +8,8 @@
 	branch = eruto/world3-1.20.1
 [submodule "origins"]
 	path = origins
-	url = https://github.com/EdwinMindcraft/origins-architectury.git
-	branch = 1.20.x/forge
+	url = https://github.com/erutobusiness/origins-architectury.git
+	branch = eruto/world3-1.20.1
 [submodule "medieval"]
 	path = medieval
 	url = https://github.com/muon-rw/Medieval-Origins-Revival.git
