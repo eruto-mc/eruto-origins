@@ -109,13 +109,33 @@ DECIDED = {
         "origins-forge",
         "当部の `origins_setup` が `replace: true` で層を丸ごと置き換えるので、"
         "どちらを採っても画面には出ない。⚠ 上流の物を残す（段4で当部の層を jar へ移す）"),
+    # ⚠⚠ **2026-09-01 に理由文を書き直した。前の理由は誤りだった。**
+    #
+    # ⚠ 前は「当部の写しは**上流と中身が同じ**と機械で確かめた」と書いていたが、
+    # ⚠⚠ **「当部の写し」が2つ在るのを1つと取り違えていた**（実物を開いて確認）:
+    #
+    #     origins-forge      loading_priority=0    hidden=false  compare_to=2    上流
+    #     shifting_origins   loading_priority=100  hidden=true   compare_to=999  ⚠ **無効化した版**
+    #     origins_setup      loading_priority=200  hidden=false  compare_to=2    上流と同じ内容
+    #
+    # ⚠ **バイト一致の組は無し。** 上流と同じなのは `origins_setup` のほうで、
+    # ⚠ ここで消しているのは `shifting_origins`（無効化した版）。
+    #
+    # ⚠ 正しい理由は **2026-08-29 の決定**（設計書「重複5件の決着」）——
+    # ⚠ **`light_armor` と `claustrophobia` は「有効」を正とし、jar 側の「（当部で無効化）」を消す。**
+    #
+    # ⚠ 挙動は変わらない: `origins_setup` の 200 が 0 も 100 も上回るので、
+    # ⚠ いまも（0/100/200 のうち）200 が勝っており、100 を落としても 200 が勝つ。
+    # ⚠⚠ **ただし段4で `origins_setup` を jar へ入れるときは、200 の側を残すこと**
+    #    （1つの jar に2つ置けないので、0 の側を残すと無効化ではなく**上流の定義**に戻る）。
     "data/origins/powers/light_armor.json": (
         "origins-forge",
-        "⚠ 当部の写しは**上流と中身が同じ**と機械で確かめた（`show_collision.py`）。"
-        "写しを消して上流の定義をそのまま効かせる"),
+        "⚠ 2026-08-29 の決定で「有効」を正とした。⚠ 消しているのは "
+        "`shifting_origins` の**無効化した版**（優先度100・`hidden`）。"
+        "⚠ 実際に勝つのは `origins_setup` の優先度200"),
     "data/origins/powers/claustrophobia.json": (
         "origins-forge",
-        "同上（上流と中身が同じ）"),
+        "同上（⚠ `shifting_origins` の無効化した版を消す。優先度200 が勝つ）"),
     "data/origins-classes/powers/explorer_kit.json": (
         "shifting_origins",
         "⚠ ここだけ**本物の上書き**（同じ中身の組が無い）。当部の物を採る"),
