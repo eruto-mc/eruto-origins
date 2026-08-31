@@ -25,7 +25,7 @@
 
 | 物 | どうするか |
 | - | - |
-| `META-INF/mods.toml` | ⚠ `[[mods]]` と `[[dependencies.*]]` を**全部並べる**（実例: `embeddium` が `embeddium`＋`rubidium`、`letsdo-API` が `doapi`＋`terraform`） |
+| `META-INF/mods.toml` | ⚠ `[[mods]]` と `[[dependencies.*]]` を**全部並べる**（実例: `embeddium` が `embeddium`＋`rubidium`、`letsdo-API` が `doapi`＋`terraform`）。⚠⚠ **`${file.jarVersion}` はここで実数へ埋める**（下記） |
 | `META-INF/MANIFEST.MF` | ⚠ **`MixinConfigs` に全部の設定を並べる**（落とすとログに1行も出ずに死ぬ） |
 | `META-INF/accesstransformer.cfg` | 連結（どこから来たかの印を付ける） |
 | `META-INF/coremods.json` | 対応表を合併。⚠ **鍵がぶつかったら落ちる** |
@@ -38,6 +38,19 @@
   （⚠ **いま Forge がやっている折り合いと同じ規則**）。⚠ 採った版は必ず印字する
 - ⚠ **決めていないぶつかりが1件でも在れば落ちる。** 許すものは下の表に**理由つき**で書く
 - ⚠ MOR から抜く 8 個は `build_mor_patch.py` の `DROP` を読む（⚠ **写さない**）
+- ⚠⚠ **`${file.jarVersion}` は混ぜる時点で実数へ埋める**（`substitute_jar_version`）。
+  ⚠ Forge はこれを MANIFEST の `Implementation-Version` から解決するが、
+  ⚠⚠ **混ぜた jar の MANIFEST は 1 つしか無い**ので、6 本ぶんの版を残せない。
+  ⚠ 埋めずに作ると `originsumbrellas` と `shiftingorigins` が **`0.0NONE`** になり、
+  ⚠⚠ **サーバは何事も無く動く**（2026-09-01 に実機で捕まえた）
+
+## ⚠ 作った後に必ず回すもの
+
+    py -3.12 tools/check_bundle_parity.py
+
+⚠ **混ぜる前の 7 本と、混ぜた後の 1 本が同じことを名乗っているか**を突き合わせる。
+⚠⚠ **この道具（作る側）は「起動しない」型しか見ていない。**
+⚠ 「起動して、動いて、値だけが違う」型は、あちら（検査する側）でしか捕まらない。
 """
 import argparse
 import ast
@@ -389,10 +402,48 @@ def licenses_of(texts):
     return out
 
 
+def impl_version_of(blob):
+    """MANIFEST の `Implementation-Version` を採る（無ければ None）。"""
+    for line in blob.decode("utf-8", "replace").replace("\r\n", "\n").split("\n"):
+        if line.startswith("Implementation-Version:"):
+            return line.split(":", 1)[1].strip()
+    return None
+
+
+def substitute_jar_version(label, text, impl):
+    """⚠⚠ **`${file.jarVersion}` を、その jar の本当の版で埋める。**
+
+    ⚠ **なぜ要るか（2026-09-01 に実機で捕まえた）**: Forge はこの書き方を
+    ⚠ **jar の MANIFEST の `Implementation-Version` から**解決する
+    （`fmlloader` の `net/minecraftforge/fml/loading/moddiscovery/ModFile.class` に
+    `jarVersion` と `0.0NONE` の両方の文字列が在る）。
+
+    ⚠⚠ **ところが混ぜた jar の MANIFEST は 1 つしか無い。**
+    ⚠ 元の 6 本は別々の `Implementation-Version` を持っているので、
+    ⚠ **どれか 1 つを残しても、残りは嘘になる。**
+
+    ⚠ 実際に `originsumbrellas` と `shiftingorigins` の版が **`0.0NONE`** になり、
+    ⚠⚠ **サーバは何事も無く動き、ログの 1 行だけが違っていた**（誰も気づかなかった）。
+
+    ⇒ ⚠ **MANIFEST に頼るのをやめ、混ぜる時点で実数へ置き換える。**
+    ⚠ こうすると `[[mods]]` ごとに本当の版が残り、MANIFEST が 1 つでも困らない。
+    """
+    if "${file.jarVersion}" not in text:
+        return text
+    if not impl:
+        raise SystemExit(
+            "!! `%s` は `version=\"${file.jarVersion}\"` と書いているのに、\n"
+            "⚠ その jar の MANIFEST に `Implementation-Version` が無い。\n"
+            "⚠⚠ **推測で埋めない。** 元の jar を直すか、`mods.toml` に実数を書く。" % label)
+    print("   版を埋めた: %-46s ${file.jarVersion} → %s" % (label, impl))
+    return text.replace("${file.jarVersion}", impl)
+
+
 def merge_mods_toml(texts):
     """`[[mods]]` と `[[dependencies.*]]` を全部並べる。⚠ 前置きは最初の1本から採る。
 
     ⚠⚠ **`license=` だけは書き換える**（合わせた中身を全部並べる）。
+    ⚠⚠ **`${file.jarVersion}` は呼ぶ側で埋めてある**（`substitute_jar_version`）。
     """
     lics = licenses_of(texts)
     combined = " AND ".join(sorted({l for _i, l, _s in lics}))
@@ -604,8 +655,14 @@ def run(write=False):
             if n == "META-INF/MANIFEST.MF":
                 continue
             if n == "META-INF/mods.toml":
+                # ⚠⚠ **`${file.jarVersion}` を、その jar の MANIFEST の版で埋めてから混ぜる。**
+                #    ⚠ 混ぜた jar の MANIFEST は 1 つしか無いので、後からでは解決できない。
+                impls = {l: impl_version_of(b)
+                         for l, b in entries["META-INF/MANIFEST.MF"]}
                 toml, lics, combined = merge_mods_toml(
-                    [(l, b.decode("utf-8", "replace")) for l, b in owners])
+                    [(l, substitute_jar_version(l, b.decode("utf-8", "replace"),
+                                                impls.get(l)))
+                     for l, b in owners])
                 z.writestr(n, toml)
                 print("   免許: %s" % combined)
                 # ⚠⚠ **どの modId がどの免許かを jar の中に残す**（段3の「LGPL の表示」）。
