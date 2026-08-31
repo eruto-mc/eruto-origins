@@ -18,7 +18,8 @@
 
 ## 入れる物（⚠ 版番号は書かない。名前の頭で引く）
 
-上の 7 本と、その中に入れ子で入っている土台を**全部1段に引き上げる**。
+上の 7 本を**1つに混ぜる**。⚠ **その中の土台（calio・apoli・AEA・Apugli・mixinextras）は
+入れ子のまま**入れる（版の重なりは Forge に任せる）。
 
 ## ⚠ 混ぜ方（1つしか置けない物）
 
@@ -29,7 +30,7 @@
 | `META-INF/accesstransformer.cfg` | 連結（どこから来たかの印を付ける） |
 | `META-INF/coremods.json` | 対応表を合併。⚠ **鍵がぶつかったら落ちる** |
 | `pack.mcmeta` | ⚠ `pack_format` が最大のものを1つ |
-| `META-INF/jarjar/**` | ⚠ **入れない**（1段に引き上げたので） |
+| `META-INF/jarjar/**` | ⚠⚠ **土台は入れ子のまま入れる。溶かさない。**⚠ 2026-08-30 に溶かして遊び用サーバが起動できなかった（`mixinextras` を**他の MOD 30 本**が持っており、`Modules origins and mixinextras export package …` で落ちる）。⚠ **重なりを整理するのは JarJar の仕事** |
 
 ## ⚠⚠ 静かに間違えない作り
 
@@ -64,11 +65,29 @@ TOP = [
     "origins-forge-",
     "origins-classes-forge-",
     "Medieval Origins Revival-",
-    "solapplepie_origins_fix-",
     "origins_umbrellas-",
     "shifting_origins-",
     "orb_layer_variants-",
 ]
+
+# ⚠⚠ **混ぜずに、入れ子のまま入れる MOD。**
+#
+# ⚠ 2026-08-30 に `solapplepie_origins_fix` を混ぜて、遊び用サーバが落ちた:
+#
+#     File eruto-origins-0.1.0.jar constructed 6 mods: [...],
+#     but had 7 mods specified: [..., solapplepie_origins_fix]
+#     The following classes are missing, but are reported in the mods.toml:
+#       [solapplepie_origins_fix]
+#
+# ⚠ 原因は **`modLoader` が違う**こと——あちらは **`lowcodefml`**（Java のクラスを持たない形）で、
+# ⚠⚠ **1つの `mods.toml` は `modLoader` を1つしか持てない。**
+# ⚠ `javafml` の下に並べると、Forge は `@Mod` のクラスを探して見つからずに落ちる。
+NEST_AS_IS = {
+    "solapplepie_origins_fix-": {
+        "group": "eruto-mc",       # ⚠ 当部が包み直したもの、という意味の名前
+        "artifact": "solapplepie_origins_fix",
+    },
+}
 
 # ⚠⚠ **決めたぶつかり**。ここに無いぶつかりが出たら落ちる。
 #    値は「どの入り口の物を採るか」の目印（jar の名前の頭）と理由。
@@ -93,7 +112,53 @@ DECIDED = {
         "⚠ 遊びには1ミリも効かないので、Origins の物を1つ採る"),
 }
 
+# ⚠ 各 jar が「自分のもの」として書いてよい `data/<名前空間>/`。
+OWN_NS = {
+    "origins-forge-": {"origins"},
+    "origins-classes-forge-": {"origins-classes"},
+    "Medieval Origins Revival-": {"medievalorigins"},
+    "origins_umbrellas-": {"originsumbrellas"},
+    "shifting_origins-": {"shiftingorigins"},
+    "orb_layer_variants-": set(),
+}
+
+# ⚠⚠ **他人の名前空間へ書いてよいと決めた分**（ぶつかっていなくても要る）。
+#
+# ⚠ 2026-09-01 のあなたの指摘: 「origins でやってるのを classes で上書きして、
+# ⚠ 独自でまた上書きして、が常態化したままだと統合の意味がない。
+# ⚠ そういう各処理をわざわざ追っていく必要性を無くしてほしい」
+#
+# ⚠⚠ **`DECIDED` は「同じパスがぶつかったとき」しか鳴らない。**
+# ⚠ 相手の名前空間へ**新しい名前で**置かれたら、⚠ **ぶつからないので黙って通る。**
+# ⚠ それも「相手の領分に入っている」＝**追いかけが要る**状態なので、ここで鳴らす。
+CROSS_NS_OK = {
+    "data/forge/tags/damage_types/is_magic.json":
+        "⚠ Forge の共有タグ。⚠ **タグは上書きではなく足し合わせ**なので、"
+        "他の MOD の分を消さない（追いかけが要らない）",
+}
+
 MANIFEST_KEEP = ("Manifest-Version",)
+
+
+def check_cross_namespace(entries):
+    """⚠⚠ **相手の名前空間へ書いている data を全部出す**（ぶつかっていなくても）。
+
+    返り値: [(パス, 書いた jar, 説明が在るか)]
+    """
+    out = []
+    for n, owners in sorted(entries.items()):
+        if not n.startswith("data/") or n.count("/") < 2:
+            continue
+        ns = n.split("/")[1]
+        if ns == "minecraft":
+            continue                     # ⚠ バニラの名前空間は誰でも足す（タグ・戦利品）
+        for label, _blob in owners:
+            own = next((v for k, v in OWN_NS.items() if label.startswith(k)), None)
+            if own is None or ns in own:
+                continue
+            why = CROSS_NS_OK.get(n) or (DECIDED[n][1] if n in DECIDED else None)
+            out.append((n, label, why))
+    return out
 
 
 def mor_drop():
@@ -109,13 +174,31 @@ def mor_drop():
     raise SystemExit("!! `DROP` を %s から読めない。⚠ 名前が変わったなら、ここも直す。" % MOR_PATCH)
 
 
+DISABLED = os.path.join(os.path.dirname(MODS), "_disabled")
+
+
 def resolve(stem):
+    """元の jar を1本に決める。
+
+    ⚠⚠ **退避先も見る。** ⚠ 2026-08-30 に、入れ替えた後は `instance/mods` に元の jar が
+    無いので**作り直せなかった**（試験の途中で道具が使えなくなる）。
+    ⚠ 退避先には**古い版も居る**ので、⚠ **版が最大の1本**を採り、そのことを印字する。
+    """
     hits = sorted(f for f in os.listdir(MODS)
                   if f.startswith(stem) and f.endswith(".jar"))
-    if len(hits) != 1:
-        raise SystemExit("!! `%s` で始まる jar が %d 本（1本であるべき）: %s"
-                         % (stem, len(hits), ", ".join(hits) or "無し"))
-    return os.path.join(MODS, hits[0])
+    if len(hits) == 1:
+        return os.path.join(MODS, hits[0])
+    if len(hits) > 1:
+        raise SystemExit("!! `%s` で始まる jar が mods に %d 本ある: %s"
+                         % (stem, len(hits), ", ".join(hits)))
+    back = sorted(f for f in os.listdir(DISABLED)
+                  if f.startswith(stem) and f.endswith(".jar")) \
+        if os.path.isdir(DISABLED) else []
+    if not back:
+        raise SystemExit("!! `%s` で始まる jar が mods にも退避先にも無い" % stem)
+    best = max(back, key=lambda f: artifact_of(f)[1])
+    print("   ⚠ %s は退避先から採った（%d 本のうち版が最大）" % (best, len(back)))
+    return os.path.join(DISABLED, best)
 
 
 def artifact_of(jar_name):
@@ -178,14 +261,99 @@ def gather():
         chosen.append((best[0], best[2]))
         winners.append(best)
 
-    # 第3段: 上の 7 本と、勝った土台だけから中身を集める
+    # 第3段: 上の 7 本の中身だけ集める。
+    # ⚠⚠ **土台は溶かさない。入れ子のまま入れる。**
+    #    ⚠ 2026-08-30 に溶かして遊び用サーバが**起動できなかった**:
+    #      java.lang.module.ResolutionException:
+    #        Modules origins and mixinextras export package
+    #        com.llamalad7.mixinextras.platform.forge to module ...
+    #    ⚠ `mixinextras` は**他の MOD 30 本が入れ子で持っている**。
+    #    ⚠⚠ **重なりを整理するのは JarJar の仕事**で、そこを奪ってはいけない。
     sink = {"entries": {}, "nested": {}}
     for stem in TOP:
         p = resolve(stem)
         collect(p, os.path.basename(p), sink)
-    for name, raw, _src in winners:
-        collect(io.BytesIO(raw), name, sink)
-    return sink, chosen, sorted(set(dropped))
+    return sink, chosen, sorted(set(dropped)), winners
+
+
+def nest_as_is():
+    """混ぜずに入れ子で入れる MOD を (jar名, 中身, identifier) で返す。"""
+    out = []
+    for stem, ident in sorted(NEST_AS_IS.items()):
+        p = resolve(stem)
+        with open(p, "rb") as fh:
+            out.append((os.path.basename(p), fh.read(), ident))
+    return out
+
+
+def jarjar_meta(winners, metas, extra):
+    """入れ子で入れるものぶんの `META-INF/jarjar/metadata.json` を組む。
+
+    ⚠ **土台の identifier と version は自分で作らない**——元の jar が書いていたものを採る
+    （⚠ group を推測すると、Forge の重なり整理が別物として扱う）。
+    ⚠ `NEST_AS_IS` の分だけは**当部が包み直したもの**なので、当部の名前で書く
+    （⚠ 他の MOD が同じ物を入れ子で持っていないことを確かめてある）。
+    """
+    out = []
+    for name, _raw, _src in winners:
+        m = metas.get(name)
+        if m is None:
+            raise SystemExit(
+                "!! `%s` の jarjar metadata が元の jar に無い。⚠ **推測で作らない。**" % name)
+        m = dict(m)
+        m["path"] = "META-INF/jarjar/%s" % name
+        out.append(m)
+    for name, _raw, ident in extra:
+        ver = ".".join(str(x) for x in artifact_of(name)[1]) or "0.0.0"
+        out.append({
+            "identifier": {"group": ident["group"], "artifact": ident["artifact"]},
+            "version": {"range": "[%s,)" % ver, "artifactVersion": ver},
+            "path": "META-INF/jarjar/%s" % name,
+            "isObfuscated": False,
+        })
+    return json.dumps({"jars": out}, indent=2, ensure_ascii=False)
+
+
+def check_mergeable():
+    """⚠⚠ **混ぜてよい形か**を作る側で見る（2026-08-30 に起動前で落ちたので足した）。
+
+    ⚠ 見るのは2つ:
+      ⑴ `modLoader` が `javafml` か（⚠ 1つの `mods.toml` は1つしか持てない）
+      ⑵ class が1つでも在るか（⚠ `lowcodefml` は 0 個で、`@Mod` のクラスが無い）
+    """
+    bad = []
+    for stem in TOP:
+        p = resolve(stem)
+        with zipfile.ZipFile(p) as z:
+            t = z.read("META-INF/mods.toml").decode("utf-8", "replace")
+            m = re.search(r'^\s*modLoader\s*=\s*["\']([^"\']+)', t, re.M)
+            loader = m.group(1) if m else "（宣言なし）"
+            ncls = sum(1 for n in z.namelist() if n.endswith(".class"))
+        if loader != "javafml" or ncls == 0:
+            bad.append((os.path.basename(p), loader, ncls))
+    return bad
+
+
+def read_metas():
+    """元の jar が書いている `jarjar/metadata.json` を、入れ子の jar 名で引けるようにする。"""
+    metas = {}
+
+    def walk(blob):
+        with zipfile.ZipFile(blob) as z:
+            try:
+                d = json.loads(z.read("META-INF/jarjar/metadata.json").decode("utf-8"))
+                for j in d.get("jars", []):
+                    metas[os.path.basename(j.get("path", ""))] = j
+            except KeyError:
+                pass
+            for n in z.namelist():
+                if n.startswith("META-INF/jarjar/") and n.endswith(".jar"):
+                    walk(io.BytesIO(z.read(n)))
+
+    for stem in TOP:
+        with open(resolve(stem), "rb") as fh:
+            walk(io.BytesIO(fh.read()))
+    return metas
 
 
 # ⚠⚠ **合わせた jar は `license=` を1つしか書けない。**
@@ -265,15 +433,80 @@ def pick_pack(items):
     return best, bestfmt
 
 
+def packages_of(names):
+    """class の入り口から package を作る（`a/b/C.class` → `a.b`）。"""
+    out = set()
+    for n in names:
+        if n.endswith(".class") and "/" in n:
+            out.add(n.rsplit("/", 1)[0].replace("/", "."))
+    return out
+
+
+def other_mod_packages():
+    """⚠⚠ **当部の一族以外**の MOD が出す package を全部集める（入れ子も含む）。
+
+    ⚠ **なぜ要るか（2026-08-30 に踏んだ）**: 土台を溶かして混ぜたら、遊び用サーバが
+    ⚠ **起動前に落ちた**——
+
+        java.lang.module.ResolutionException:
+          Modules origins and mixinextras export package
+          com.llamalad7.mixinextras.platform.forge to module ...
+
+    ⚠ Forge は jar を1つずつ**モジュール**として載せるので、
+    ⚠⚠ **同じ package を2つのモジュールが出すと、そこで終わる。**
+    ⚠ `mixinextras` は**他の MOD 30 本**が入れ子で持っていた。
+
+    ⚠ **一族7本の中だけを見て「class 衝突 0 件」と言っていたのが穴だった。**
+    ⚠ 走査の範囲が狭いと、0 件は何も言っていない。
+    """
+    mine = {os.path.basename(resolve(s)) for s in TOP}
+    mine |= {os.path.basename(resolve(s)) for s in NEST_AS_IS}
+    # ⚠⚠ **自分の出力も除く。** ⚠ 2026-08-30 に、入れ替えた後の `instance/mods` に
+    #    ⚠ **前に置いた当部の jar が居て**、⚠ **自分自身と 82 個ぶつかると出した。**
+    mine |= {f for f in os.listdir(MODS) if f.startswith("eruto-origins-")}
+    out = collections.defaultdict(set)
+
+    def walk(blob, label):
+        with zipfile.ZipFile(blob) as z:
+            names = z.namelist()
+            for p in packages_of(names):
+                out[p].add(label)
+            for n in names:
+                if n.startswith("META-INF/jarjar/") and n.endswith(".jar"):
+                    walk(io.BytesIO(z.read(n)), "%s ▸ %s" % (label, os.path.basename(n)))
+
+    for f in sorted(os.listdir(MODS)):
+        if not f.endswith(".jar") or f in mine:
+            continue
+        try:
+            with open(os.path.join(MODS, f), "rb") as fh:
+                walk(io.BytesIO(fh.read()), f)
+        except Exception:
+            continue
+    return out
+
+
+def check_packages(entries):
+    """⚠ 当部の jar が**外へ出す** package が、他の MOD とぶつからないか。
+
+    ⚠ 入れ子で入れる土台は**数えない**（あちらは別のモジュールとして載り、
+    ⚠ 重なりは Forge が整理する）。数えるのは**溶かした分だけ**。
+    """
+    mine = packages_of(entries)
+    others = other_mod_packages()
+    clash = sorted(p for p in mine if p in others)
+    return mine, clash, others
+
+
 def run(write=False):
     drop = mor_drop()
-    sink, chosen, dropped = gather()
+    sink, chosen, dropped, winners = gather()
     entries = sink["entries"]
 
     print("== 入れた jar ==")
     for stem in TOP:
         print("   %s" % os.path.basename(resolve(stem)))
-    print("== 入れ子から引き上げた土台（⚠ 高いほうを採る）==")
+    print("== 入れ子のまま入れる土台（⚠ 高いほうを採る）==")
     for name, src in sorted(chosen):
         print("   %-46s ← %s" % (name, src))
     if dropped:
@@ -302,6 +535,45 @@ def run(write=False):
     print("   入り口 %d ／ mixin の設定 %d 本 ／ ⚠ 決めていないぶつかり %d 件"
           % (len(entries), len(cfgs), len(bad)))
     print("   ⚠ MOR から抜く: %d 件" % len(drop))
+
+    # ⚠⚠ **混ぜてよい形か**（modLoader と class の有無）
+    notok = check_mergeable()
+    if notok:
+        print("== ⚠⚠ 混ぜてはいけない形の jar が %d 本 ==" % len(notok))
+        for name, loader, ncls in notok:
+            print("   !! %-52s modLoader=%s class %d 個" % (name, loader, ncls))
+        print("⚠ **`modLoader` は 1 つの `mods.toml` に 1 つだけ。**")
+        print("⚠ `NEST_AS_IS` へ移して**入れ子のまま**入れる。")
+        bad.append(("(混ぜてはいけない形 %d 本)" % len(notok), ["起動前に落ちる"]))
+
+    # ⚠⚠ **モジュールの衝突を作る側で見る**（2026-08-30 に起動前で落ちたので足した）
+    mine_pkgs, clash, others = check_packages(entries)
+    print("   ⚠ 当部が出す package %d 個 ／ 他の MOD が出す package %d 個 ／ "
+          "⚠⚠ **ぶつかり %d 個**" % (len(mine_pkgs), len(others), len(clash)))
+    if clash:
+        print("== ⚠⚠ 同じ package を出す MOD が他に居る（Forge は起動前に落ちる）==")
+        for p in clash[:15]:
+            print("   !! %-52s ← %s" % (p, ", ".join(sorted(others[p])[:3])))
+        if len(clash) > 15:
+            print("   … 他 %d 個" % (len(clash) - 15))
+        print("⚠ **その土台は溶かさず、入れ子のまま入れる**（重なりの整理は JarJar の仕事）。")
+        bad.append(("(package の衝突 %d 個)" % len(clash), ["起動前に落ちる"]))
+
+    # ⚠⚠ **相手の名前空間へ書いている分**（ぶつかっていなくても出す）
+    cross = check_cross_namespace(entries)
+    unex = [c for c in cross if c[2] is None]
+    print("   ⚠⚠ **相手の名前空間へ書いている data: %d 件**（うち説明なし %d 件）"
+          % (len(cross), len(unex)))
+    if cross:
+        print("== ⚠ 相手の領分へ入っている data ==")
+        for n, label, why in cross:
+            print("   %s %-52s ← %s" % ("  " if why else "!!", n, label))
+            print("        %s" % (why or "⚠⚠ **説明が無い。追いかけが要る状態のまま。**"))
+    if unex:
+        print("⚠ **なぜ相手の名前空間へ書くのかを `CROSS_NS_OK` に書くまで作らない。**")
+        print("⚠ 書けないなら、⚠⚠ **その定義を持ち主の側へ畳む**のが本筋。")
+        bad.append(("(相手の名前空間へ %d 件)" % len(unex), ["追いかけが残る"]))
+
     print("== 決めたぶつかり（%d 件・理由つき）==" % len(DECIDED))
     for n, (who, why) in sorted(DECIDED.items()):
         here = n in entries
@@ -367,6 +639,16 @@ def run(write=False):
         z.writestr("META-INF/MANIFEST.MF",
                    "Manifest-Version: 1.0\r\n"
                    "MixinConfigs: %s\r\n" % ",".join(cfgs))
+        # ⚠⚠ **土台は入れ子のまま入れる。** 溶かすと他の MOD とモジュールがぶつかる。
+        metas = read_metas()
+        extra = nest_as_is()
+        for name, raw, _src in winners:
+            z.writestr("META-INF/jarjar/%s" % name, raw)
+        for name, raw, _ident in extra:
+            z.writestr("META-INF/jarjar/%s" % name, raw)
+        z.writestr("META-INF/jarjar/metadata.json", jarjar_meta(winners, metas, extra))
+        print("   入れ子で入れた: 土台 %d 本 ＋ 混ぜない MOD %d 本"
+              % (len(winners), len(extra)))
     print()
     print("作った: %s（%d バイト）" % (out, os.path.getsize(out)))
     return 0
@@ -402,8 +684,53 @@ def self_test():
     except SystemExit:
         print("  ok 陽性 存在しない目印は落ちる")
 
+    # ⚠⚠ package の衝突を見る側の対照（2026-08-30 に起動前で落ちた形）
+    sink0, _c0, _d0, _w0 = gather()
+    mine, clash, others = check_packages(sink0["entries"])
+    HIT = "com.llamalad7.mixinextras.platform.forge"
+    if HIT in others:
+        print("  ok 陽性 他の MOD %d 本が %s を出しているのが見えている"
+              % (len(others[HIT]), HIT))
+    else:
+        print("  NG 陽性 %s が見えていない（走査の範囲が狭い）" % HIT)
+        ng += 1
+    if HIT in mine:
+        print("  NG 陰性 当部の jar が %s を出している（また落ちる）" % HIT)
+        ng += 1
+    else:
+        print("  ok 陰性 当部の jar は %s を出していない" % HIT)
+    if clash:
+        print("  NG いまの構成で package が %d 個ぶつかる" % len(clash))
+        ng += 1
+    else:
+        print("  ok いまの構成で package のぶつかりは 0 個")
+
+    # ⚠⚠ 相手の名前空間へ書いている分を見る側の対照（2026-09-01・あなたの指摘）
+    cross = check_cross_namespace(sink0["entries"])
+    if len(cross) >= 5:
+        print("  ok 陽性 相手の名前空間へ書いている data を %d 件つかまえた" % len(cross))
+    else:
+        print("  NG 陽性 %d 件しか見えない（5 件在るはず）" % len(cross))
+        ng += 1
+    unex = [c for c in cross if c[2] is None]
+    if unex:
+        print("  NG 説明の無い越境が %d 件" % len(unex))
+        ng += 1
+    else:
+        print("  ok 越境 %d 件すべてに理由が書いてある" % len(cross))
+    # ⚠ 陽性: **説明を外すと鳴る**こと（許し一覧が効きすぎて黙る壊れ方を見る）
+    keep = dict(CROSS_NS_OK)
+    CROSS_NS_OK.clear()
+    left = [c for c in check_cross_namespace(sink0["entries"]) if c[2] is None]
+    CROSS_NS_OK.update(keep)
+    if left:
+        print("  ok 陽性 説明を外すと %d 件が「説明なし」に化ける" % len(left))
+    else:
+        print("  NG 陽性 説明を外しても鳴らない（許しが効きすぎている）")
+        ng += 1
+
     # ⚠ 陰性: 決めた表の宛先が、実際にその入り口を持っていること
-    sink, _c, _d = gather()
+    sink, _c, _d, _w = gather()
     for n, (who, _why) in sorted(DECIDED.items()):
         owners = [l for l, _b in sink["entries"].get(n, [])]
         if any(l.startswith(who) for l in owners):
