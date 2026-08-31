@@ -27,3 +27,8 @@ bin/
 # fabric
 
 run/
+
+# python
+
+# ⚠ `tools/check_bundle_parity.py` が `build_bundle.py` を import するので出る
+__pycache__/
