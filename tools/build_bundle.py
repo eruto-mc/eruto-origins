@@ -170,6 +170,28 @@ CROSS_NS_OK = {
         "他の MOD の分を消さない（追いかけが要らない）",
 }
 
+# ⚠⚠ **訳の鍵が2つの名前空間にまたがっているとき、どちらを正とするか**（2026-09-01 新設）。
+#
+# ⚠ **なぜ要るか**: 翻訳の鍵は**名前空間で分かれていない**。
+# ⚠ `ClientLanguage.loadFrom` が全名前空間を**1枚の平らな Map** へ流し込み、同じ鍵は後勝ち
+# （逆コンパイルした `net/minecraft/client/resources/language/ClientLanguage.java:32-49` を開いて確認）。
+#
+# ⚠⚠ **その巡回順は `MultiPackResourceManager.getNamespaces()` ＝ `HashMap.keySet()`**
+# （同 `net/minecraft/server/packs/resources/MultiPackResourceManager.java:26,72-74`）。
+# ⚠⚠ **つまり順序は決まっていない。** MOD を足し引きすれば入れ替わる。
+#
+# ⚠ **これは設計書 §3 が「無くす」と言った状態そのもの**——
+# 「⚠ 同じ id が2つ在れば、いまのように静かに勝敗が決まるのではなく、ビルドが落ちるようにする」。
+# ⚠ だから**混ぜるときに落とす**。値は「勝たせる名前空間」と理由。
+LANG_DECIDED = {
+    "origin.origins.human.description": (
+        "origins",
+        "⚠ `origins:human` は **Origins の種族**で、⚠⚠ **MOR が他所の名前空間の鍵を"
+        "自分の lang に書いている**（en_us / ja_jp / ru_ru / zh_cn の4言語）。"
+        "⚠ MOR 側を落とす——⚠ **MOR 自身の種族（`origin.medievalorigins.*`）の訳は残る**ので、"
+        "失う機能は無い。⚠ 当部の手書きの訳は `origins` 名前空間に在るので、そちらが生きる"),
+}
+
 MANIFEST_KEEP = ("Manifest-Version",)
 
 
@@ -192,6 +214,64 @@ def check_cross_namespace(entries):
             why = CROSS_NS_OK.get(n) or (DECIDED[n][1] if n in DECIDED else None)
             out.append((n, label, why))
     return out
+
+
+def lang_files(entries):
+    """`assets/<名前空間>/lang/<言語>.json` を (パス, 名前空間, 言語, 出どころ, 中身) で返す。"""
+    out = []
+    for n, owners in sorted(entries.items()):
+        p = n.split("/")
+        if len(p) < 4 or p[0] != "assets" or p[2] != "lang" or not n.endswith(".json"):
+            continue
+        for label, blob in owners:
+            try:
+                d = json.loads(blob.decode("utf-8-sig"))
+            except Exception:
+                continue
+            out.append((n, p[1], p[-1][:-len(".json")], label, d))
+    return out
+
+
+def check_lang_collisions(entries):
+    """⚠⚠ **2つ以上の名前空間が同じ翻訳の鍵を、違う値で持っていないか。**
+
+    ⚠ 持っていたら、どちらが画面に出るかは `HashMap` の巡回順に任される（`LANG_DECIDED` の注記）。
+    ⚠ **同じ値なら問題にしない**（どちらが勝っても同じ文字が出る）。
+
+    返り値: [(言語, 鍵, {(名前空間, 出どころ): 値}, 決めてあるか)]
+    """
+    per = collections.defaultdict(lambda: collections.defaultdict(dict))
+    for _n, ns, code, label, d in lang_files(entries):
+        for k, v in d.items():
+            per[code][k][(ns, label)] = v
+    out = []
+    for code in sorted(per):
+        for k, owners in sorted(per[code].items()):
+            if len({ns for ns, _l in owners}) < 2:
+                continue
+            if len(set(owners.values())) == 1:
+                continue          # ⚠ 値が同じなら、どちらが勝っても画面は変わらない
+            out.append((code, k, owners, k in LANG_DECIDED))
+    return out
+
+
+def apply_lang_decision(path, blob):
+    """⚠ 負けた名前空間の lang から、決めた鍵を落とす。返り値: (中身, 落とした鍵の一覧)。"""
+    p = path.split("/")
+    if len(p) < 4 or p[0] != "assets" or p[2] != "lang":
+        return blob, []
+    ns = p[1]
+    try:
+        d = json.loads(blob.decode("utf-8-sig"))
+    except Exception:
+        return blob, []
+    dropped = [k for k, (winner, _why) in LANG_DECIDED.items()
+               if k in d and winner != ns]
+    if not dropped:
+        return blob, []
+    for k in dropped:
+        del d[k]
+    return json.dumps(d, indent=2, ensure_ascii=False).encode("utf-8"), dropped
 
 
 def mor_drop():
@@ -645,6 +725,29 @@ def run(write=False):
         print("⚠ 書けないなら、⚠⚠ **その定義を持ち主の側へ畳む**のが本筋。")
         bad.append(("(相手の名前空間へ %d 件)" % len(unex), ["追いかけが残る"]))
 
+    # ⚠⚠ **訳の鍵が名前空間をまたいでぶつかっていないか**（2026-09-01 追加）
+    #    ⚠ 同じパスでぶつからないので `DECIDED` では捕まらない。
+    #    ⚠ **どちらが出るかが `HashMap` の巡回順に任される**＝設計書 §3 が無くすと言った状態。
+    lang_bad = check_lang_collisions(entries)
+    undecided = [c for c in lang_bad if not c[3]]
+    print("   ⚠⚠ **訳の鍵が名前空間をまたいでぶつかっている: %d 件**（うち未決 %d 件）"
+          % (len(lang_bad), len(undecided)))
+    if lang_bad:
+        print("== ⚠ 名前空間をまたぐ訳の重複 ==")
+        for code, k, owners, decided in lang_bad:
+            print("   %s %-10s %s" % ("  " if decided else "!!", code, k))
+            for (ns, label), v in sorted(owners.items()):
+                mark = "→" if decided and LANG_DECIDED[k][0] == ns else " "
+                print("        %s %-18s ← %-44s %s"
+                      % (mark, ns, label, v.replace("\n", "\\n")[:44]))
+            if decided:
+                print("        %s" % LANG_DECIDED[k][1])
+    if undecided:
+        print("⚠ **どちらを正とするかを `LANG_DECIDED` に理由つきで書くまで作らない。**")
+        print("⚠⚠ **書かないと、画面に出る文が MOD の増減で入れ替わる**"
+              "（`getNamespaces()` が `HashMap.keySet()` のため）。")
+        bad.append(("(訳の重複 %d 件)" % len(undecided), ["どちらが出るか決まらない"]))
+
     print("== 決めたぶつかり（%d 件・理由つき）==" % len(DECIDED))
     for n, (who, why) in sorted(DECIDED.items()):
         here = n in entries
@@ -668,6 +771,7 @@ def run(write=False):
     os.makedirs(OUT_DIR, exist_ok=True)
     out = os.path.join(OUT_DIR, "eruto-origins-0.1.0.jar")
     at = []
+    lang_dropped = []          # ⚠ 負けた名前空間から落とした訳の鍵（必ず印字する）
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
         for n, owners in sorted(entries.items()):
             if n in drop or n.startswith("META-INF/jarjar/"):
@@ -711,6 +815,11 @@ def run(write=False):
             pick = DECIDED[n][0] if n in DECIDED else None
             blob = next((b for l, b in owners if pick and l.startswith(pick)),
                         owners[0][1])
+            # ⚠⚠ **負けた名前空間の訳から、決めた鍵を落とす**（2026-09-01）。
+            #    ⚠ 落とした分は必ず印字する（黙って消さない）。
+            blob, dropped_keys = apply_lang_decision(n, blob)
+            for k in dropped_keys:
+                lang_dropped.append((n, k))
             z.writestr(n, blob)
         z.writestr("META-INF/accesstransformer.cfg", "\n".join(at))
         z.writestr("META-INF/MANIFEST.MF",
@@ -726,6 +835,11 @@ def run(write=False):
         z.writestr("META-INF/jarjar/metadata.json", jarjar_meta(winners, metas, extra))
         print("   入れ子で入れた: 土台 %d 本 ＋ 混ぜない MOD %d 本"
               % (len(winners), len(extra)))
+    # ⚠⚠ **落とした訳の鍵を名指しで出す**（黙って消さない）。
+    if lang_dropped:
+        print("   ⚠ 負けた名前空間から落とした訳の鍵: %d 件" % len(lang_dropped))
+        for n, k in sorted(lang_dropped):
+            print("      %-44s %s" % (n, k))
     print()
     print("作った: %s（%d バイト）" % (out, os.path.getsize(out)))
     return 0
@@ -805,6 +919,36 @@ def self_test():
     else:
         print("  NG 陽性 説明を外しても鳴らない（許しが効きすぎている）")
         ng += 1
+
+    # ⚠⚠ 訳の重複を見る側の対照（2026-09-01・⚠ **設計書 §3 が無くすと言った状態**）
+    lang_bad = check_lang_collisions(sink0["entries"])
+    if len(lang_bad) >= 4:
+        print("  ok 陽性 名前空間をまたぐ訳の重複を %d 件つかまえた" % len(lang_bad))
+    else:
+        print("  NG 陽性 %d 件しか見えない（4 件在るはず）" % len(lang_bad)); ng += 1
+    if [c for c in lang_bad if not c[3]]:
+        print("  NG 決めていない訳の重複が残っている"); ng += 1
+    else:
+        print("  ok 訳の重複 %d 件すべてに正が決めてある" % len(lang_bad))
+    # ⚠ 陽性: **決めた表を空にすると鳴る**こと（許しが効きすぎる壊れ方を見る）
+    keep_l = dict(LANG_DECIDED)
+    LANG_DECIDED.clear()
+    left = [c for c in check_lang_collisions(sink0["entries"]) if not c[3]]
+    LANG_DECIDED.update(keep_l)
+    if left:
+        print("  ok 陽性 決めた表を空にすると %d 件が「未決」に化ける" % len(left))
+    else:
+        print("  NG 陽性 空にしても鳴らない（許しが効きすぎている）"); ng += 1
+    # ⚠ 陰性: 勝った名前空間からは落とさない／負けた側からは落とす
+    key = next(iter(keep_l))
+    win = keep_l[key][0]
+    probe = json.dumps({key: "x", "other.key": "y"}).encode()
+    _b, drop_w = apply_lang_decision("assets/%s/lang/ja_jp.json" % win, probe)
+    _b2, drop_l = apply_lang_decision("assets/medievalorigins/lang/ja_jp.json", probe)
+    if not drop_w and drop_l == [key]:
+        print("  ok 陰性 勝った側は残し、負けた側からだけ落とす")
+    else:
+        print("  NG 陰性 落とし方が逆（勝ち側 %s ／ 負け側 %s）" % (drop_w, drop_l)); ng += 1
 
     # ⚠ 陰性: 決めた表の宛先が、実際にその入り口を持っていること
     sink, _c, _d, _w = gather()
