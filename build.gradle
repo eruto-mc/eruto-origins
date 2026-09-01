@@ -222,8 +222,20 @@ project(":apoli") {
 		//    ⚠ 版を上げるときは、当部のパックに入っている実物（0.5.4）と食い違わないか見る。
 		compileOnly 'io.github.llamalad7:mixinextras-common:0.5.0'
 
-		jarJar(group: 'maven.modrinth', name: 'additionalentityattributes-forge', version: "[${aea_version},)", transitive: false) {
+		// ⚠ 当部の変更（2026-09-01）: 版の**範囲**をやめ、実版＋`ranged` に書き換えた。
+		//    ⚠⚠ **Modrinth の Maven は `maven-metadata.xml` に GET は 200、HEAD は 404 を返す**
+		//    （実測。対照として `maven.minecraftforge.net` は HEAD も 200）。
+		//    ⚠ Gradle は写しが在ると HEAD で存在を確かめてから読むので、
+		//    ⚠⚠ **空のホームでは1回だけ通り、動的版の期限が切れた後は必ず落ちる**
+		//    （`Could not find any matches ... as no versions ... are available`）。
+		//    ⚠ `--refresh-dependencies` では直らない（実測）。
+		//    ⚠ 入る jar は変わらない——`pin` が既に 1.4.0.5+1.20.1 に固定しており、
+		//    ⚠ 範囲が選ぶ 1.5.0.1+1.20.2 は **NeoForge・1.20.2 専用**で 1.20.1 には入らない。
+		//    ⚠ `metadata.json` の `range` は `jarJar.ranged` で保つ（calio と同じ書き方）。
+		//    ⚠ 上流を取り込むとき、ここは衝突する。⚠ **上流が AEA の版を上げたら手で上げる。**
+		jarJar(group: 'maven.modrinth', name: 'additionalentityattributes-forge', version: "${aea_version}+${minecraft_version}", transitive: false) {
 			jarJar.pin(it, "${aea_version}+${minecraft_version}")
+			jarJar.ranged(it, "[${aea_version},)")
 		}
 
 		jarJar(project(':calio')) {
@@ -275,8 +287,20 @@ project(":origins") {
 			exclude group: 'net.minecraftforge', module: 'forge'
 		}
 
-		jarJar(group: 'maven.modrinth', name: 'additionalentityattributes-forge', version: "[${aea_version},)", transitive: false) {
+		// ⚠ 当部の変更（2026-09-01）: 版の**範囲**をやめ、実版＋`ranged` に書き換えた。
+		//    ⚠⚠ **Modrinth の Maven は `maven-metadata.xml` に GET は 200、HEAD は 404 を返す**
+		//    （実測。対照として `maven.minecraftforge.net` は HEAD も 200）。
+		//    ⚠ Gradle は写しが在ると HEAD で存在を確かめてから読むので、
+		//    ⚠⚠ **空のホームでは1回だけ通り、動的版の期限が切れた後は必ず落ちる**
+		//    （`Could not find any matches ... as no versions ... are available`）。
+		//    ⚠ `--refresh-dependencies` では直らない（実測）。
+		//    ⚠ 入る jar は変わらない——`pin` が既に 1.4.0.5+1.20.1 に固定しており、
+		//    ⚠ 範囲が選ぶ 1.5.0.1+1.20.2 は **NeoForge・1.20.2 専用**で 1.20.1 には入らない。
+		//    ⚠ `metadata.json` の `range` は `jarJar.ranged` で保つ（calio と同じ書き方）。
+		//    ⚠ 上流を取り込むとき、ここは衝突する。⚠ **上流が AEA の版を上げたら手で上げる。**
+		jarJar(group: 'maven.modrinth', name: 'additionalentityattributes-forge', version: "${aea_version}+${minecraft_version}", transitive: false) {
 			jarJar.pin(it, "${aea_version}+${minecraft_version}")
+			jarJar.ranged(it, "[${aea_version},)")
 		}
 
 		jarJar(project(':calio')) {
