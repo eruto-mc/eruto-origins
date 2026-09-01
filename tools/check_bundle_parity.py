@@ -191,11 +191,18 @@ def registered_configs(entries):
 
 
 def gather_inputs():
-    """混ぜる前の 7 本を読む。返り値: {jar名: {入り口: 中身}}。"""
+    """混ぜる前の入力を読む。返り値: {見出し: {入り口: 中身}}。
+
+    ⚠⚠ **段4 から、当部の datapack も入力**（2026-09-01）。
+    ⚠ 教えないと **238 件が「増えた」に見える**——⚠ **検査が作る側に追いついていない**だけで、
+    ⚠ そこを黙って通すと、⚠⚠ **本当に増えた物も見えなくなる。**
+    """
     src = {}
     for stem in BB.TOP:
         p = BB.resolve(stem)
         src[os.path.basename(p)] = read_jar(p)
+    for label, rel, blob in BB.datapack_entries():
+        src.setdefault(label, {})[rel] = blob
     return src
 
 

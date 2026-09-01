@@ -83,6 +83,47 @@ TOP = [
     "orb_layer_variants-",
 ]
 
+# ⚠⚠ **段4: 当部の datapack を jar の中へ入れる**（2026-09-01）。
+#
+# ⚠ **なぜ（依頼者の意向）**: 「⚠ 複数の MOD や datapack に散らばってしまったものを
+# ⚠⚠ **1つの MOD に1つの実装として**まとめれば管理もしやすくバグもなくなる」。
+#
+# ⚠ いま能力の定義は **jar と datapack の2か所**に在り、⚠⚠ **どちらが勝つかは
+# `loading_priority` が実行時に決めている**（＝設計書 §3 が「やめる」と言った形）。
+# ⚠ jar へ入れれば **1か所**になり、⚠ **ワールドを作り直しても消えない**（問題8）。
+#
+# ⚠⚠ **入れると 85 件がぶつかる。** 足し合わせの種類は `MERGERS` が合わせ、
+# ⚠ 選ぶ種類は `DECIDED` が理由を要求する。⚠ **どちらでもない物が在れば作れない。**
+#
+# ⚠ **`--no-datapacks` で外せる**（段4 の前後を比べるため）。
+DATAPACKS = [
+    os.path.join(MC, "worlds", "world-3", "datapacks", "origins_setup", "src"),
+    os.path.join(MC, "worlds", "world-3", "datapacks", "origins_diet", "src"),
+]
+USE_DATAPACKS = True
+
+
+def datapack_entries():
+    """datapack の `data/**` を (見出し, 入り口, 中身) で返す。⚠ `pack.mcmeta` は入れない。"""
+    out = []
+    if not USE_DATAPACKS:
+        return out
+    for root in DATAPACKS:
+        if not os.path.isdir(root):
+            raise SystemExit("!! datapack の置き場が無い: %s" % root)
+        label = "datapack:" + os.path.basename(os.path.dirname(root))
+        n = 0
+        for dp, _dn, fs in os.walk(os.path.join(root, "data")):
+            for f in fs:
+                p = os.path.join(dp, f)
+                rel = os.path.relpath(p, root).replace(os.sep, "/")
+                with open(p, "rb") as fh:
+                    out.append((label, rel, fh.read()))
+                n += 1
+        print("   ⚠ %s から %d 件を入れる" % (label, n))
+    return out
+
+
 # ⚠⚠ **混ぜずに、入れ子のまま入れる MOD。**
 #
 # ⚠ 2026-08-30 に `solapplepie_origins_fix` を混ぜて、遊び用サーバが落ちた:
@@ -105,10 +146,19 @@ NEST_AS_IS = {
 # ⚠⚠ **決めたぶつかり**。ここに無いぶつかりが出たら落ちる。
 #    値は「どの入り口の物を採るか」の目印（jar の名前の頭）と理由。
 DECIDED = {
-    "data/origins/origin_layers/origin.json": (
-        "origins-forge",
-        "当部の `origins_setup` が `replace: true` で層を丸ごと置き換えるので、"
-        "どちらを採っても画面には出ない。⚠ 上流の物を残す（段4で当部の層を jar へ移す）"),
+    # ⚠⚠ **2026-09-01・段4 で外した3件。** ⚠ **前提が消えたため**（自分で注記に書いていた）。
+    #
+    # ⚠ 段4 の前は「datapack が**後から**読まれて勝つので、jar 側でどちらを採っても同じ」だった。
+    # ⚠⚠ **jar へ入れた瞬間、その「後から」が無くなる**——同じ zip の中に1つしか置けないので、
+    # ⚠ ここで上流を採ると**当部の定義が消える。**
+    #
+    # ⚠ 外した3件（`DECIDED` から消して、規則に任せた）:
+    #   `data/origins/origin_layers/origin.json`   … ⚠ 上流10種 対 当部17種（`replace:true`）
+    #   `data/origins/powers/light_armor.json`     … ⚠ 優先度 0 対 200
+    #   `data/origins/powers/claustrophobia.json`  … ⚠ 同上
+    #
+    # ⚠ 層は `LOSSY_OK` が、能力は `pick_by_priority` が受け持つ。
+    # ⚠⚠ **どちらも Minecraft と同じ決め方**なので、当部が手で決めるより間違えにくい。
     # ⚠⚠ **2026-09-01 に理由文を書き直した。前の理由は誤りだった。**
     #
     # ⚠ 前は「当部の写しは**上流と中身が同じ**と機械で確かめた」と書いていたが、
@@ -128,17 +178,32 @@ DECIDED = {
     # ⚠ いまも（0/100/200 のうち）200 が勝っており、100 を落としても 200 が勝つ。
     # ⚠⚠ **ただし段4で `origins_setup` を jar へ入れるときは、200 の側を残すこと**
     #    （1つの jar に2つ置けないので、0 の側を残すと無効化ではなく**上流の定義**に戻る）。
-    "data/origins/powers/light_armor.json": (
-        "origins-forge",
-        "⚠ 2026-08-29 の決定で「有効」を正とした。⚠ 消しているのは "
-        "`shifting_origins` の**無効化した版**（優先度100・`hidden`）。"
-        "⚠ 実際に勝つのは `origins_setup` の優先度200"),
-    "data/origins/powers/claustrophobia.json": (
-        "origins-forge",
-        "同上（⚠ `shifting_origins` の無効化した版を消す。優先度200 が勝つ）"),
     "data/origins-classes/powers/explorer_kit.json": (
         "shifting_origins",
         "⚠ ここだけ**本物の上書き**（同じ中身の組が無い）。当部の物を採る"),
+    # ── 段4（当部の datapack を jar へ入れる）で出たぶつかり（2026-09-01）──
+    #
+    # ⚠ **`loading_priority` が無い種類**なので、道具は決められない。⚠ 1件ずつ開いて決めた。
+    # ⚠ **どれも「当部が意図して上書きしている物」**——datapack が後に読まれて勝っており、
+    # ⚠⚠ **jar へ入れても同じ結果にするには datapack の側を採る。**
+    "data/medievalorigins/functions/mdvlorigins/arachnae_extricate.mcfunction": (
+        "datapack:origins_setup",
+        "⚠ 当部が短くした版（6行 → 4行）。⚠ **いまも datapack が勝っている**ので、"
+        "同じ結果にするには当部の物を採る"),
+    "data/medievalorigins/functions/mdvlorigins/pixie_callon.mcfunction": (
+        "datapack:origins_setup",
+        "⚠ 当部が縮尺を変えた版（`pehkui:height` 0.166 → 0.444）。同上"),
+    "data/origins-classes/origin_layers/class.json": (
+        "datapack:origins_setup",
+        "⚠⚠ **当部の層の定義**（`default_origin`・`allow_random`・`name`・"
+        "`missing_name` ほかを持つ。上流は4項目、当部は10項目）。"
+        "⚠ `replace` を持つので**丸ごと置き換えが決まり**——当部の物を採る"),
+    "data/origins/badges/active.json": (
+        "datapack:origins_setup",
+        "⚠ 当部が印の文言を差し替えた分。同上"),
+    "data/origins/badges/toggle.json": (
+        "datapack:origins_setup",
+        "⚠ 当部が印の文言を差し替えた分。同上"),
     "pack.png": (
         "origins-classes-forge",
         "⚠ 中身は**設定画面に出す絵**だけ（`mods.toml` の `logoFile`）。"
@@ -165,6 +230,20 @@ OWN_NS = {
 # ⚠ 相手の名前空間へ**新しい名前で**置かれたら、⚠ **ぶつからないので黙って通る。**
 # ⚠ それも「相手の領分に入っている」＝**追いかけが要る**状態なので、ここで鳴らす。
 CROSS_NS_OK = {
+    # ⚠ 段4 で `DECIDED` から外した3件の越境の理由（2026-09-01）。
+    #    ⚠ **越境そのものは前から在り**、`DECIDED` の理由文が兼ねていた。
+    #    ⚠⚠ **決着（どれを採るか）と越境（誰の領分か）は別の問い**なので、分けて書く。
+    "data/origins/origin_layers/origin.json":
+        "⚠ MOR が `origins` の層へ自分の19種族を足している（`replace:false`）。"
+        "⚠⚠ **層は足し合わせなので、これは正しい書き方**。"
+        "⚠ 当部は `replace:true` の1枚で畳むので、合成の結果に含まれる",
+    "data/origins/powers/light_armor.json":
+        "⚠ `shifting_origins` が `origins` の能力を上書きしている"
+        "（優先度100・`hidden`＝当部で無効化した版）。"
+        "⚠⚠ **当部の `origins_setup` が優先度200 で有効へ戻す**ので、"
+        "`pick_by_priority` が 200 の側を採る（2026-08-29 の決定）",
+    "data/origins/powers/claustrophobia.json":
+        "同上（⚠ 優先度 0 / 100 / 200 の3枚が在り、200 が勝つ）",
     "data/forge/tags/damage_types/is_magic.json":
         "⚠ Forge の共有タグ。⚠ **タグは上書きではなく足し合わせ**なので、"
         "他の MOD の分を消さない（追いかけが要らない）",
@@ -319,15 +398,92 @@ def merge_lang(owners):
             "／".join(notes))
 
 
+def merge_layer(owners):
+    """⚠⚠ **層を欄ごとに合わせる**（`origins/…/api/data/PartialLayer.java` の `merge` と同じ決まり）。
+
+    ⚠ `loading_priority` の小さい順に畳む。⚠ **欄は「後の寄与が値を持っていれば後が勝つ」。**
+    ⚠⚠ **`origins` は足し合わせ**——ただし ⚠ **`replace:true` の寄与が来たら、そこまでを捨てる。**
+
+    ⚠ **上流の規則を写している。** ⚠ 写しであることを承知で書く理由:
+    ⚠⚠ **1つの zip に2枚置けない以上、ここで畳むしかない。**
+    ⚠ 上流が規則を変えたら、⚠ **ここも直す**（`PartialLayer.merge` を見る）。
+    """
+    SCALAR = ("order", "enabled", "name", "missing_name", "missing_description",
+              "allow_random", "allow_random_unchoosable", "default_origin",
+              "auto_choose", "hidden", "title")
+    got = []
+    for label, blob in owners:
+        try:
+            d = json.loads(blob.decode("utf-8-sig"))
+        except Exception:
+            return None, "⚠ 読めない（形が違う）"
+        if not isinstance(d, dict):
+            return None, "⚠ 地図の形ではない"
+        got.append((int(d.get("loading_priority", 0)), label, d))
+    got.sort(key=lambda g: g[0])          # ⚠ 小さい順に畳む（後が勝つ）
+
+    out, origins, excl, notes = {}, [], [], []
+    for _p, label, d in got:
+        for k in SCALAR:
+            if k in d:
+                out[k] = d[k]
+        if d.get("replace"):
+            origins = []
+            notes.append("%s の `replace:true` でそれより前の種族を捨てた" % label)
+        for o in d.get("origins", []):
+            if o not in origins:
+                origins.append(o)
+        if d.get("replace_exclude_random"):
+            excl = []
+        for e in d.get("exclude_random", []):
+            if e not in excl:
+                excl.append(e)
+    out["origins"] = origins
+    if excl:
+        out["exclude_random"] = excl
+    out["replace"] = True                 # ⚠ 畳んだ結果が正。他の寄与を足させない
+    return (json.dumps(out, indent=2, ensure_ascii=False).encode("utf-8"),
+            "／".join(notes))
+
+
 # ⚠ 種類 → 合わせ方。⚠ **ここに無い種類は「1つ選ぶ」のまま**（それが正しい種類）。
 MERGERS = {
     UNION_TAG: merge_tag,
     UNION_LANG: merge_lang,
-    # ⚠⚠ `origin_layers` は入れていない——欄ごとの合成は `PartialLayer.merge` を写すことになり、
-    #    ⚠ **上流の実装と2か所に同じ規則を持つ**。⚠ いまぶつかっているのは1件だけで、
-    #    ⚠ `LOSSY_OK` に理由つきで置いてある。⚠ **段4で当部の層を入れるときに、
-    #    生成器（`origins_setup/build.py`）が1枚に作る**ほうが筋が良い。
+    UNION_LAYER: merge_layer,
 }
+
+
+def pick_by_priority(owners):
+    """⚠⚠ **`loading_priority` の最大を採る**——Minecraft と同じ決め方（2026-09-01）。
+
+    ⚠ **根拠（ソースで確かめた）**:
+      * `apoli/…/common/data/PowerLoader.java` … `.max(LOADING_ORDER_COMPARATOR)`
+      * `origins/…/common/data/OriginLoader.java` … `.max(LOADING_ORDER)`
+    ⚠ **丸ごと1つが勝つ**（欄ごとの合成ではない）ので、⚠ **勝者を残せば結果は同じ。**
+
+    ⚠ **手で決めない理由**: 82 件在り、⚠⚠ **どれも「datapack が優先度で勝っている」だけ。**
+    ⚠ 人が82行書くと、⚠ **1行間違えても誰も気づかない。**
+
+    ⚠ **同点なら決めない**（`None` を返す）——⚠ その場合はいまも
+    「どちらが勝つか読み込み順で決まる」状態なので、⚠⚠ **人が決めるべき。**
+
+    返り値: (採る中身, 採った見出し, 優先度の一覧) ／ 決められなければ (None, None, 一覧)
+    """
+    got = []
+    for label, blob in owners:
+        try:
+            d = json.loads(blob.decode("utf-8-sig"))
+        except Exception:
+            return None, None, None
+        if not isinstance(d, dict):
+            return None, None, None
+        got.append((int(d.get("loading_priority", 0)), label, blob))
+    tops = [g for g in got if g[0] == max(g2[0] for g2 in got)]
+    prios = ", ".join("%s=%d" % (l, p) for p, l, _b in got)
+    if len(tops) != 1:
+        return None, None, prios          # ⚠ 同点＝人が決める
+    return tops[0][2], tops[0][1], prios
 
 
 def lost_by_picking(path, owners, winner_label):
@@ -646,6 +802,11 @@ def gather():
     for stem in TOP:
         p = resolve(stem)
         collect(p, os.path.basename(p), sink)
+    # ⚠⚠ **段4: 当部の datapack を最後に足す**（2026-09-01）。
+    #    ⚠ **順序が意味を持つ**——`MERGERS` の合成は入力の順で、⚠ **後が勝つ**。
+    #    ⚠ datapack は当部が上流を上書きするために書いた物なので、⚠ **最後に置く。**
+    for label, rel, blob in datapack_entries():
+        sink["entries"].setdefault(rel, []).append((label, blob))
     return sink, chosen, sorted(set(dropped)), winners
 
 
@@ -934,6 +1095,7 @@ def run(write=False):
     cfgs = sorted({n for n in entries if n.endswith(".mixins.json") and "/" not in n})
 
     bad = []
+    mergeable = by_priority = 0
     for n, owners in sorted(entries.items()):
         if n in special or len(owners) == 1:
             continue
@@ -941,6 +1103,19 @@ def run(write=False):
         if len(blobs) == 1:
             continue                       # ⚠ 中身が同じなら問題にしない
         if n in DECIDED:
+            continue
+        # ⚠⚠ **合わせられる種類は、ぶつかりとして数えない**（`MERGERS` が足し合わせる）。
+        if MERGERS.get(merge_kind_any(n)):
+            mergeable += 1
+            continue
+        # ⚠⚠ **1つ選ぶ種類は `loading_priority` で決まる**（Minecraft と同じ決め方）。
+        #    ⚠ **同点だけが人の仕事**——いまも読み込み順で決まっている所なので。
+        if merge_kind(n) == PICK_ONE:
+            _b, who, prios = pick_by_priority(owners)
+            if who is not None:
+                by_priority += 1
+                continue
+            bad.append((n, [l for l, _b2 in owners] + ["⚠ 優先度が同点（%s）" % prios]))
             continue
         bad.append((n, [l for l, _b in owners]))
 
@@ -1053,6 +1228,7 @@ def run(write=False):
     at = []
     lang_dropped = []          # ⚠ 負けた名前空間から落とした訳の鍵（必ず印字する）
     merged_paths = []          # ⚠ 1つ選ばずに**合わせた**入り口（必ず印字する）
+    picked_by_priority = []    # ⚠ `loading_priority` で決めた入り口（必ず印字する）
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
         for n, owners in sorted(entries.items()):
             if n in drop or n.startswith("META-INF/jarjar/"):
@@ -1105,6 +1281,13 @@ def run(write=False):
                 merged_paths.append((n, [l for l, _b in owners],
                                      "⚠ 合わせられなかった（%s）→ 1つ選ぶ" % note))
             pick = DECIDED[n][0] if n in DECIDED else None
+            if pick is None and len(owners) > 1 and merge_kind(n) == PICK_ONE:
+                # ⚠⚠ **Minecraft と同じ決め方**（`loading_priority` の最大）。
+                pb, who, _pr = pick_by_priority(owners)
+                if pb is not None:
+                    picked_by_priority.append((n, who))
+                    z.writestr(n, pb)
+                    continue
             blob = next((b for l, b in owners if pick and l.startswith(pick)),
                         owners[0][1])
             # ⚠⚠ **負けた名前空間の訳から、決めた鍵を落とす**（2026-09-01）。
@@ -1127,6 +1310,13 @@ def run(write=False):
         z.writestr("META-INF/jarjar/metadata.json", jarjar_meta(winners, metas, extra))
         print("   入れ子で入れた: 土台 %d 本 ＋ 混ぜない MOD %d 本"
               % (len(winners), len(extra)))
+    # ⚠⚠ **優先度で決めた分を数で出す**（82 件を1件ずつは出さない。⚠ 内訳は下の表）。
+    if picked_by_priority:
+        import collections as _c
+        by = _c.Counter(who for _n, who in picked_by_priority)
+        print("   ⚠ `loading_priority` で決めた入り口: %d 件" % len(picked_by_priority))
+        for who, cnt in by.most_common():
+            print("      %-40s %d 件を採った" % (who, cnt))
     # ⚠⚠ **合わせた入り口を名指しで出す**（1つ選ばなかったことを見えるようにする）。
     if merged_paths:
         print("   ⚠ 1つ選ばずに**合わせた**入り口: %d 件" % len(merged_paths))
@@ -1353,11 +1543,18 @@ def main(argv=None):
     #   ⚠ 段1・段2 の「配っている jar と同じ物が出る」を確かめ直したいときに使う。
     a.add_argument("--released", action="store_true",
                    help="当部が建てた jar を使わず、配布 jar だけで混ぜる")
+    # ⚠ 段4 の前後を比べるための口。⚠ **既定は入れる。**
+    a.add_argument("--no-datapacks", action="store_true",
+                   help="当部の datapack を jar へ入れない（段4 の前の形）")
     ns = a.parse_args(argv)
     if ns.released:
         global USE_BUILT
         USE_BUILT = False
         print("⚠ `--released`: 当部が建てた jar を使わない（配布 jar だけで混ぜる）")
+    if ns.no_datapacks:
+        global USE_DATAPACKS
+        USE_DATAPACKS = False
+        print("⚠ `--no-datapacks`: 当部の datapack を jar へ入れない（段4 の前の形）")
     return self_test() if ns.self_test else run(write=ns.write)
 
 
