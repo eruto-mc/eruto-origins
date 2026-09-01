@@ -55,11 +55,13 @@
 import argparse
 import ast
 import collections
+import hashlib
 import io
 import json
 import os
 import re
 import sys
+import time
 import zipfile
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -464,8 +466,45 @@ MERGERS = {
 }
 
 
+def pick_by_owner(owners):
+    """⚠⚠ **当部の分が勝つ**——数字を使わない決め方（2026-09-01・依頼者の指摘）。
+
+    ⚠ **なぜ数字をやめたか**: 「⚠ 優先度で対応しようとすると、
+    ⚠⚠ **複雑な CSS 構造みたいな修正の難しさ**が生まれるだろ」。
+    ⚠ そのとおりで、⚠ **1つのファイルを開いても何が勝つか分からない。**
+
+    ⚠ **数えてから置き換えた。** 優先度で決着していた 77 件のうち:
+
+        当部の datapack 対 jar 1本   76 件   ← ⚠ 全部これ
+        jar どうし                     1 件   ← 既に `DECIDED` で人が決めている
+
+    ⚠⚠ **つまり数字は1件も要らなかった。** 規則は1文で書ける——
+    **「当部が書いた分が在れば、それが勝つ」**。
+
+    ⚠ **当部の分が2つ在るときは決めない**（`None` を返す）——
+    ⚠ そのときは人が `DECIDED` に理由つきで書く。
+
+    ⚠ **`loading_priority` は datapack の側には残す。** ⚠⚠ **レンタル（本番）は
+    まだ datapack として読んでおり、そこでは数字が本当に効いている。**
+    ⚠ 混ぜた jar からは `strip_priority` が消す（競う相手が居ないので）。
+
+    返り値: (採る中身, 採った見出し, 内訳の文) ／ 決められなければ (None, None, 内訳)
+    """
+    mine = [(l, b) for l, b in owners if l.startswith("datapack:")]
+    who = ", ".join(l for l, _b in owners)
+    if len(mine) == 1:
+        return mine[0][1], mine[0][0], who
+    return None, None, who
+
+
 def pick_by_priority(owners):
-    """⚠⚠ **`loading_priority` の最大を採る**——Minecraft と同じ決め方（2026-09-01）。
+    """⚠ **2026-09-01 に使うのをやめた**（`pick_by_owner` へ置き換え）。
+
+    ⚠ **消していない理由**: `--released`（配布 jar だけで混ぜる）のときは
+    ⚠ **当部の datapack が入力に居ない**——そのときの決着に要る。
+    ⚠ 自己試験もこちらを試している。
+
+    ⚠⚠ **`loading_priority` の最大を採る**——Minecraft と同じ決め方。
 
     ⚠ **根拠（ソースで確かめた）**:
       * `apoli/…/common/data/PowerLoader.java` … `.max(LOADING_ORDER_COMPARATOR)`
@@ -688,6 +727,40 @@ BUILT = {
 # ⚠ `--released` を付けると `BUILT` を使わず、配布 jar だけで混ぜる。
 #   ⚠ 段1・段2 の「配っている jar と同じ物が出る」を確かめ直したいときに使う。
 USE_BUILT = True
+
+
+BUNDLE_STEM = "eruto-origins-"
+
+
+def bundle_version():
+    """混ぜた jar の版を決める。⚠⚠ **日付＋入力の指紋**（2026-09-01・依頼者の指摘）。
+
+    ⚠ **なぜ変えたか**: それまで **`0.1.0` 固定**だった。⚠⚠ **部員がどの版を持っているか
+    言えない**——手元とサーバとクライアントで中身が違っても、名前が同じなので気づけない。
+    ⚠ 依頼者に「ずっと 0.1.0 だけどどうなの？」と問われた。
+
+    ⚠ **日付だけでは足りない**（1日に何度も建てる）。⚠ **入力の指紋を足す**——
+    ⚠⚠ **入力が1バイトでも違えば版が変わり、同じなら同じ版になる**（無駄に増えない）。
+
+    ⚠ 指紋に入れるのは「混ぜる素の jar の中身」だけ。⚠ **建てた時刻は入れない**
+    （入れると、何も変えていないのに毎回変わる）。
+    """
+    h = hashlib.sha1()
+    for stem in list(TOP) + list(NEST_AS_IS):
+        try:
+            p = resolve(stem)
+        except SystemExit:
+            continue
+        with open(p, "rb") as fh:
+            h.update(hashlib.sha1(fh.read()).digest())
+    for label, rel, blob in datapack_entries():
+        h.update(rel.encode("utf-8"))
+        h.update(hashlib.sha1(blob).digest())
+    return "%s.%s" % (time.strftime("%Y.%m.%d"), h.hexdigest()[:7])
+
+
+def bundle_name():
+    return "%s%s.jar" % (BUNDLE_STEM, bundle_version())
 
 
 def built_path(stem):
@@ -1175,11 +1248,23 @@ def run(write=False):
         # ⚠⚠ **1つ選ぶ種類は `loading_priority` で決まる**（Minecraft と同じ決め方）。
         #    ⚠ **同点だけが人の仕事**——いまも読み込み順で決まっている所なので。
         if merge_kind(n) == PICK_ONE:
-            _b, who, prios = pick_by_priority(owners)
+            # ⚠⚠ **まず「当部の分が勝つ」で決める**（数字を使わない・2026-09-01）。
+            _b, who, whos = pick_by_owner(owners)
             if who is not None:
                 by_priority += 1
                 continue
-            bad.append((n, [l for l, _b2 in owners] + ["⚠ 優先度が同点（%s）" % prios]))
+            # ⚠ `--released`（配布 jar だけ）のときは当部の分が居ないので、
+            #   ⚠ そのときだけ Minecraft と同じ数字の決め方に落ちる。
+            if not USE_DATAPACKS:
+                _b, who, prios = pick_by_priority(owners)
+                if who is not None:
+                    by_priority += 1
+                    continue
+                bad.append((n, [l for l, _b2 in owners]
+                            + ["⚠ 優先度が同点（%s）" % prios]))
+                continue
+            bad.append((n, [l for l, _b2 in owners]
+                        + ["⚠ 当部の分が1つに決まらない（%s）" % whos]))
             continue
         bad.append((n, [l for l, _b in owners]))
 
@@ -1288,7 +1373,7 @@ def run(write=False):
         return 0
 
     os.makedirs(OUT_DIR, exist_ok=True)
-    out = os.path.join(OUT_DIR, "eruto-origins-0.1.0.jar")
+    out = os.path.join(OUT_DIR, bundle_name())
     at = []
     lang_dropped = []          # ⚠ 負けた名前空間から落とした訳の鍵（必ず印字する）
     merged_paths = []          # ⚠ 1つ選ばずに**合わせた**入り口（必ず印字する）
@@ -1350,7 +1435,11 @@ def run(write=False):
                 pick = DECIDED[n][0] if n in DECIDED else None
                 if pick is None and len(owners) > 1 and merge_kind(n) == PICK_ONE:
                     # ⚠⚠ **Minecraft と同じ決め方**（`loading_priority` の最大）。
-                    pb, who, _pr = pick_by_priority(owners)
+                    # ⚠⚠ **当部の分が勝つ**（数字を使わない・2026-09-01）。
+                    pb, who, _w = pick_by_owner(owners)
+                    if pb is None and not USE_DATAPACKS:
+                        # ⚠ `--released` のときだけ、数字の決め方に落ちる
+                        pb, who, _pr = pick_by_priority(owners)
                     if pb is not None:
                         picked_by_priority.append((n, who))
                         blob = pb
@@ -1409,6 +1498,15 @@ def run(write=False):
         for n, k in sorted(lang_dropped):
             print("      %-44s %s" % (n, k))
     print()
+    # ⚠⚠ **古い版を消す**（2026-09-01）。⚠ 版は「日付＋入力の指紋」で、
+    #    ⚠ **指紋は順序を持たない**——`max()` で選ぶと `b147425` が `8f5242e` に勝ち、
+    #    ⚠⚠ **古い jar を新しいものとして選んでしまう**（実際に1度そうして誤診した）。
+    #    ⚠ **1本だけ置く**のがいちばん確実。⚠ 消した分は必ず印字する。
+    for old in sorted(os.listdir(OUT_DIR)):
+        if (old.startswith(BUNDLE_STEM) and old.endswith(".jar")
+                and old != os.path.basename(out)):
+            os.remove(os.path.join(OUT_DIR, old))
+            print("   ⚠ 古い版を消した: %s" % old)
     print("作った: %s（%d バイト）" % (out, os.path.getsize(out)))
     return 0
 

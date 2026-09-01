@@ -63,7 +63,9 @@ sys.path.insert(0, HERE)
 
 import build_bundle as BB          # noqa: E402  ⚠ 一覧はこちらが正
 
-BUNDLE = os.path.join(BB.OUT_DIR, "eruto-origins-0.1.0.jar")
+# ⚠⚠ **名前を決め打ちしない**（2026-09-01）。⚠ 版が「日付＋入力の指紋」になったので、
+#    ⚠ 書けば必ず腐る。⚠ **作る側（`build_bundle`）が名前を決め、こちらは聞く。**
+BUNDLE = os.path.join(BB.OUT_DIR, BB.bundle_name())
 
 # ⚠ `build_bundle.py` が**作り直す**入り口。落ちていても誤りではない。
 REWRITTEN = {
