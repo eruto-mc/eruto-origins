@@ -671,6 +671,14 @@ BUILT = {
     "origins-forge-": (os.path.join(REPO, "origins", "build", "libs"),
                        "origins-forge-", "-all.jar",
                        ["origins/src", "apoli/src", "calio/src"]),
+    # ⚠⚠ **2026-09-01 に足した。** ⚠ 当部の自作なので、⚠ **建てた版を使わないと
+    #    「mixin を畳んだ」直しが混ぜた jar に届かない**（配布 jar には古い mixin が在る）。
+    #    ⚠ 置き場は別リポジトリ（`eruto-mc/shifting_origins`）。
+    "shifting_origins-": (os.path.join(os.path.dirname(REPO), "shifting_origins",
+                                       "build", "libs"),
+                          "shifting_origins-", ".jar",
+                          [os.path.join(os.path.dirname(REPO), "shifting_origins",
+                                        "src")]),
 }
 
 # ⚠ `--released` を付けると `BUILT` を使わず、配布 jar だけで混ぜる。
@@ -691,11 +699,25 @@ def built_path(stem):
             "（⚠ 素の `java` は 8 なので JAVA_HOME に JDK 17 を指す）。" % (stem, d))
     hits = sorted(f for f in os.listdir(d)
                   if f.startswith(head) and f.endswith(tail))
-    if len(hits) != 1:
+    if not hits:
         raise SystemExit(
-            "!! `%s` に当たる建てた jar が %d 本（1本でないと使えない）: %s\n"
-            "⚠ **黙って選ばない。** 要らない物を消すか `BUILT` を直す。"
-            % (stem, len(hits), ", ".join(hits) or "無し"))
+            "!! `%s` に当たる建てた jar が無い（置き場: %s）\n"
+            "⚠ 先にその MOD を建てる。" % (stem, d))
+    if len(hits) > 1:
+        # ⚠⚠ **版が最大のものを採る**（2026-09-01）。⚠ **更新時刻では選ばない**——
+        #    ⚠ `build/libs/` には過去の版が溜まる（`shifting_origins` は18本在った）。
+        #    ⚠ 版を数として比べる（`1.10.0` > `1.9.2`。文字の並びでは逆になる）。
+        def ver(f):
+            body = f[len(head):-len(tail)] if tail else f[len(head):]
+            out = []
+            for part in re.split(r"[^0-9]+", body):
+                if part:
+                    out.append(int(part))
+            return out
+        best = max(hits, key=ver)
+        print("   ⚠ `%s` の建てた jar が %d 本在るので、版が最大の %s を採った"
+              % (stem, len(hits), best))
+        hits = [best]
     p = os.path.join(d, hits[0])
 
     # ⚠⚠ **建てた物がソースより古ければ落とす**（2026-09-01）。
