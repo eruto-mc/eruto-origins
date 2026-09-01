@@ -194,6 +194,111 @@ LANG_DECIDED = {
 
 MANIFEST_KEEP = ("Manifest-Version",)
 
+# ⚠⚠ **Minecraft は同じパスの data を3通りで解決する**（2026-09-01 に実物のソースで確かめた）。
+#
+# | 種類 | 決まり方 | 根拠 |
+# | - | - | - |
+# | `powers/*.json`       | `.max(loading_priority)` 丸ごと1つ勝ち | `apoli/…/PowerLoader.java` |
+# | `origins/*.json`      | 同じく丸ごと1つ勝ち                    | `origins/…/OriginLoader.java` |
+# | `origin_layers/*.json`| ⚠ **欄ごとの合成**（`replace:true` で置き換え） | `origins/…/LayerLoader.java` |
+# | `tags/**.json`        | ⚠ **足し合わせ**（`replace:true` で `list.clear()`） | `net/minecraft/tags/TagLoader.java` |
+#
+# ⚠⚠ **`DECIDED` は「どちらを採るか」しか書けない。**
+# ⚠ 上2つには正しい答えだが、⚠⚠ **下2つには「どちらか」という答えが存在しない**——
+# ⚠ 1つに畳んだ時点で、採らなかった側の値は**消える**。
+#
+# ⚠ だから種類を見分けて、⚠ **足し合わせの種類で値が消えるなら落とす。**
+UNION_TAG = "tags"
+UNION_LAYER = "origin_layers"
+PICK_ONE = "pick"
+
+
+def merge_kind(path):
+    """その data がどう解決されるか。⚠ 分からないものは `None`（＝人に決めさせる）。"""
+    p = path.split("/")
+    if len(p) < 3 or p[0] != "data":
+        return None
+    if "/tags/" in path:
+        return UNION_TAG
+    if UNION_LAYER in p:
+        return UNION_LAYER
+    if "powers" in p or "origins" in p[2:]:
+        return PICK_ONE
+    return None
+
+
+def tag_values(blob):
+    """タグの `values` を id の一覧にする。読めなければ None。"""
+    try:
+        d = json.loads(blob.decode("utf-8-sig"))
+    except Exception:
+        return None, None
+    if not isinstance(d, dict) or "values" not in d:
+        return None, None
+    out = []
+    for x in d.get("values", []):
+        out.append(x if isinstance(x, str) else (x or {}).get("id"))
+    return bool(d.get("replace")), [x for x in out if x]
+
+
+def layer_origins(blob):
+    """層の `origins` を一覧にする。読めなければ None。"""
+    try:
+        d = json.loads(blob.decode("utf-8-sig"))
+    except Exception:
+        return None, None
+    if not isinstance(d, dict):
+        return None, None
+    out = []
+    for x in d.get("origins", []):
+        if isinstance(x, str):
+            out.append(x)
+        elif isinstance(x, dict):
+            out.extend(x.get("origins", []) or [])
+    return bool(d.get("replace")), out
+
+
+def lost_by_picking(path, owners, winner_label):
+    """⚠⚠ **1つ選んだせいで消える値**を数える。返り値: (種類, 消える値の一覧, 説明)。
+
+    ⚠ 足し合わせの種類でだけ意味がある。⚠ **勝つ側が `replace:true` なら、
+    そもそも他の寄与は捨てられる決まりなので、畳んでも結果は変わらない。**
+    """
+    kind = merge_kind(path)
+    if kind not in (UNION_TAG, UNION_LAYER):
+        return kind, [], ""
+    read = tag_values if kind == UNION_TAG else layer_origins
+    win = next((b for l, b in owners if l.startswith(winner_label)), None)
+    if win is None:
+        return kind, [], "⚠ 勝つ側が見つからない"
+    w_replace, w_vals = read(win)
+    if w_vals is None:
+        return kind, [], "⚠ 中身を読めない（形が違う）"
+    if w_replace:
+        return kind, [], "⚠ 勝つ側が `replace: true`＝他の寄与は元から捨てられる"
+    lost = []
+    for label, blob in owners:
+        if label.startswith(winner_label):
+            continue
+        _r, vals = read(blob)
+        for v in (vals or []):
+            if v not in w_vals and v not in lost:
+                lost.append(v)
+    return kind, lost, ""
+
+
+# ⚠⚠ **値が消えると分かっていて、それでも1つ選ぶもの**（2026-09-01 新設）。
+#    ⚠ **既定は落とす。** ここに書くのは、⚠ **なぜ消えても平気かを外の事実で言えるとき**だけ。
+#    ⚠ **その外の事実が消えたら、この行も無効になる**——だからその条件を必ず書く。
+LOSSY_OK = {
+    "data/origins/origin_layers/origin.json":
+        "⚠ 当部の `origins_setup` が同じパスを `replace: true` で持っており、"
+        "⚠ **datapack のほうが後に読まれて層を丸ごと置き換える**ので、"
+        "jar 側でどちらを採っても画面には出ない。"
+        "⚠⚠ **段4で `origins_setup` を jar へ入れた瞬間、この前提は消える**"
+        "——そのときは MOR の分と合わせた1枚を作ること",
+}
+
 
 def check_cross_namespace(entries):
     """⚠⚠ **相手の名前空間へ書いている data を全部出す**（ぶつかっていなくても）。
@@ -289,6 +394,82 @@ def mor_drop():
 
 DISABLED = os.path.join(os.path.dirname(MODS), "_disabled")
 
+# ⚠⚠ **当部がソースから建てた jar を、配布 jar の代わりに使う**（2026-09-01）。
+#
+# ⚠ **なぜ要るか**: この道具は配布 jar を混ぜるので、⚠⚠ **段1・段2 の成果が出荷物に入らない。**
+# ⚠ 実際に測ったら、出荷している jar の `logPowerTally` を含む class は **0 個**で
+# ⚠ （ソースには 3 か所在る）、入れ子の `apoli` は
+# ⚠ **2026-07-27 の class を差し替えた写しとバイト一致**だった。
+# ⚠ **その状態では段5（珠の画面を直す）ができない**——直しはソースからしか入らない。
+#
+# ⚠ `origins` の `-all` jar 1 本で、⑴ ソースから建てた `origins` と
+# ⑵ ソースから建てた入れ子の `apoli`・`calio` の両方が入る（段1と段2）。
+#
+# ⚠ 値は「その stem の代わりに使うファイルを探す形」。⚠ **版番号を書かない。**
+# ⚠⚠ **当たりが 1 本でなければ落ちる**（黙って別の物を使わない）。
+BUILT = {
+    # stem → (置き場, 名前の頭, 名前の尻, ⚠ **その jar が反映しているはずのソース**)
+    "origins-forge-": (os.path.join(REPO, "origins", "build", "libs"),
+                       "origins-forge-", "-all.jar",
+                       ["origins/src", "apoli/src", "calio/src"]),
+}
+
+# ⚠ `--released` を付けると `BUILT` を使わず、配布 jar だけで混ぜる。
+#   ⚠ 段1・段2 の「配っている jar と同じ物が出る」を確かめ直したいときに使う。
+USE_BUILT = True
+
+
+def built_path(stem):
+    """`BUILT` に在る stem について、当部が建てた jar を1本に決める。無ければ None。"""
+    spec = BUILT.get(stem)
+    if not spec or not USE_BUILT:
+        return None
+    d, head, tail, srcs = spec
+    if not os.path.isdir(d):
+        raise SystemExit(
+            "!! `%s` の建てた jar の置き場が無い: %s\n"
+            "⚠ 先に `./gradlew :origins:jarJar` を回す"
+            "（⚠ 素の `java` は 8 なので JAVA_HOME に JDK 17 を指す）。" % (stem, d))
+    hits = sorted(f for f in os.listdir(d)
+                  if f.startswith(head) and f.endswith(tail))
+    if len(hits) != 1:
+        raise SystemExit(
+            "!! `%s` に当たる建てた jar が %d 本（1本でないと使えない）: %s\n"
+            "⚠ **黙って選ばない。** 要らない物を消すか `BUILT` を直す。"
+            % (stem, len(hits), ", ".join(hits) or "無し"))
+    p = os.path.join(d, hits[0])
+
+    # ⚠⚠ **建てた物がソースより古ければ落とす**（2026-09-01）。
+    #    ⚠ **なぜ要るか**: `./gradlew :origins:jarJar` は AEA の解決で落ちるのに、
+    #    ⚠⚠ **前の走行の `-all.jar` がそのまま残る。** 私はそれを見ずに
+    #    「ビルドが通った」と報告し、⚠ **11日前の jar を入力にしかけた。**
+    #    ⚠ 当部の規則「⚠ 『書き出した／ビルドした』と言う → 成果物の更新時刻も見る」を機械にした。
+    jar_mt = os.path.getmtime(p)
+    newest, newest_f = 0.0, None
+    for rel in srcs:
+        root = os.path.join(REPO, *rel.split("/"))
+        for dp, _dn, fs in os.walk(root):
+            for f in fs:
+                if not f.endswith((".java", ".json", ".mcmeta", ".png", ".cfg")):
+                    continue
+                mt = os.path.getmtime(os.path.join(dp, f))
+                if mt > newest:
+                    newest, newest_f = mt, os.path.join(dp, f)
+    if newest_f and newest > jar_mt + 1:
+        import time
+        raise SystemExit(
+            "!! 建てた jar がソースより古い。⚠ **古い物から作らない。**\n"
+            "   jar    : %s（%s）\n"
+            "   ソース : %s（%s）\n"
+            "⚠ `./gradlew :origins:jarJar` を回し直す。⚠⚠ **終了コードだけを見ない**"
+            "——ログの最後が `BUILD SUCCESSFUL` か、jar の更新時刻が新しくなったかの両方を見る。\n"
+            "⚠ 配布 jar だけで作りたいなら `--released` を付ける。"
+            % (os.path.relpath(p, REPO).replace("\\", "/"),
+               time.strftime("%m-%d %H:%M", time.localtime(jar_mt)),
+               os.path.relpath(newest_f, REPO).replace("\\", "/"),
+               time.strftime("%m-%d %H:%M", time.localtime(newest))))
+    return p
+
 
 def resolve(stem):
     """元の jar を1本に決める。
@@ -296,7 +477,14 @@ def resolve(stem):
     ⚠⚠ **退避先も見る。** ⚠ 2026-08-30 に、入れ替えた後は `instance/mods` に元の jar が
     無いので**作り直せなかった**（試験の途中で道具が使えなくなる）。
     ⚠ 退避先には**古い版も居る**ので、⚠ **版が最大の1本**を採り、そのことを印字する。
+
+    ⚠⚠ **当部が建てた jar が在るならそちらが先**（`BUILT`）。⚠ **必ず印字する。**
     """
+    b = built_path(stem)
+    if b:
+        print("   ⚠ %s は**当部が建てた物**を使う（%s）"
+              % (os.path.basename(b), os.path.relpath(b, REPO).replace("\\", "/")))
+        return b
     hits = sorted(f for f in os.listdir(MODS)
                   if f.startswith(stem) and f.endswith(".jar"))
     if len(hits) == 1:
@@ -610,11 +798,14 @@ def other_mod_packages():
     ⚠ **一族7本の中だけを見て「class 衝突 0 件」と言っていたのが穴だった。**
     ⚠ 走査の範囲が狭いと、0 件は何も言っていない。
     """
-    mine = {os.path.basename(resolve(s)) for s in TOP}
-    mine |= {os.path.basename(resolve(s)) for s in NEST_AS_IS}
-    # ⚠⚠ **自分の出力も除く。** ⚠ 2026-08-30 に、入れ替えた後の `instance/mods` に
-    #    ⚠ **前に置いた当部の jar が居て**、⚠ **自分自身と 82 個ぶつかると出した。**
-    mine |= {f for f in os.listdir(MODS) if f.startswith("eruto-origins-")}
+    # ⚠⚠ **除くのは「名前の頭」で見る。解決した実体の名前で見ない**（2026-09-01 に直した）。
+    #    ⚠ `BUILT` で当部が建てた jar を入力にした瞬間、⚠ **解決した名前が
+    #    `…-all.jar`（`-eruto1` が付かない）に変わり、`instance/mods` に残っている
+    #    配布 jar と一致しなくなった。** ⚠⚠ **結果、自分自身と 38 個ぶつかると出した。**
+    #    ⚠ 2026-08-30 に同じ形を1度踏んでいる（前に置いた当部の jar と 82 個）。
+    #    ⚠ **名前の頭で除けば、入力をどこから採っても効く。**
+    stems = tuple(TOP) + tuple(NEST_AS_IS) + ("eruto-origins-",)
+    mine = {f for f in os.listdir(MODS) if f.startswith(stems)}
     out = collections.defaultdict(set)
 
     def walk(blob, label):
@@ -755,6 +946,23 @@ def run(write=False):
         print("        %s" % why)
         if not here:
             bad.append((n, ["⚠ もう存在しない（決定が古い）"]))
+            continue
+        # ⚠⚠ **足し合わせの種類なら、1つ選んだせいで消える値を数える**（2026-09-01）。
+        #    ⚠ 「どちらを採るか」という答えが存在しない種類なので、黙って選ばせない。
+        kind, lost, note = lost_by_picking(n, entries[n], who)
+        if kind in (UNION_TAG, UNION_LAYER):
+            print("        ⚠ 種類: %s（**足し合わせ**）%s"
+                  % (kind, ("／" + note) if note else ""))
+            if lost:
+                ok = LOSSY_OK.get(n)
+                print("        %s **1つ選ぶと消える値: %d 件** %s"
+                      % ("  " if ok else "!!", len(lost), lost[:6]))
+                if ok:
+                    print("        （消えてよい理由）%s" % ok)
+                else:
+                    bad.append((n, ["⚠ 足し合わせなのに1つ選んで %d 件消える" % len(lost)]))
+            else:
+                print("        ok 消える値は無い")
     if bad:
         print()
         print("== ⚠⚠ 決めていないぶつかり ==")
@@ -847,7 +1055,20 @@ def run(write=False):
 
 def self_test():
     print("== 自己試験 ==")
+    # ⚠ 自己試験は**配布 jar だけ**で回す（`--released` と同じ）。
+    #   ⚠ 当部が建てた jar は在ったり無かったり古かったりするので、
+    #   ⚠⚠ **道具の判定を試すのに、入力の都合で落ちると意味が無い。**
+    global USE_BUILT
+    was, USE_BUILT = USE_BUILT, False
+    try:
+        return _self_test_body()
+    finally:
+        USE_BUILT = was
+
+
+def _self_test_body():
     ng = 0
+    print("  ⚠ 入力は配布 jar（`BUILT` は使わない）")
     d = mor_drop()
     if len(d) == 8:
         print("  ok DROP を 8 件読めた")
@@ -968,7 +1189,15 @@ def main(argv=None):
     a = argparse.ArgumentParser()
     a.add_argument("--write", action="store_true")
     a.add_argument("--self-test", action="store_true")
+    # ⚠ `BUILT`（当部が建てた jar）を使わず、配布 jar だけで混ぜる。
+    #   ⚠ 段1・段2 の「配っている jar と同じ物が出る」を確かめ直したいときに使う。
+    a.add_argument("--released", action="store_true",
+                   help="当部が建てた jar を使わず、配布 jar だけで混ぜる")
     ns = a.parse_args(argv)
+    if ns.released:
+        global USE_BUILT
+        USE_BUILT = False
+        print("⚠ `--released`: 当部が建てた jar を使わない（配布 jar だけで混ぜる）")
     return self_test() if ns.self_test else run(write=ns.write)
 
 
