@@ -221,6 +221,22 @@ project(":apoli") {
 		//    同梱しており、パック内でも 23 本の MOD が持っている。
 		//    ⚠ 版を上げるときは、当部のパックに入っている実物（0.5.4）と食い違わないか見る。
 		compileOnly 'io.github.llamalad7:mixinextras-common:0.5.0'
+		// ⚠⚠ **当部の変更（2026-09-01）: 注釈処理にも載せる。**
+		//    ⚠ **Mixin 0.8.5 の注釈処理は `@WrapOperation` を知らない。**
+		//    `mixinextras-common` が同梱している `MixinExtrasAP` を `-processorpath` から
+		//    読み込ませて初めて、Mixin 本体の注釈処理へ登録され（`InjectionInfo.register` を7回）、
+		//    その `method=` と `@At(target=)` が refmap に書かれる。
+		//    ⚠ `compileOnly` はコンパイル用のクラスパスで、⚠⚠ **注釈処理の探索路ではない。**
+		//
+		//    ⚠⚠ **載せずに建てたら、依頼者のクライアントが起動時に落ちた**（2026-09-01）:
+		//      Mixin apply failed apoli.mixins.json:GameRendererMixin
+		//      @WrapOperation ... could not find any targets matching 'getFov'
+		//    ⚠ refmap に 12 件（5 クラス）が書かれていなかった。
+		//
+		//    ⚠ 根拠: 配っている jar の refmap を実際に作った
+		//    `worlds/world-3/dev/work/apoli_build/build.gradle:21-23` に同じ2行が在る。
+		//    ⚠ 検査は `py -3.12 tools/check_refmap_coverage.py`（陰性＝配っている jar は 0 件）。
+		annotationProcessor 'io.github.llamalad7:mixinextras-common:0.5.0'
 
 		// ⚠ 当部の変更（2026-09-01）: 版の**範囲**をやめ、実版＋`ranged` に書き換えた。
 		//    ⚠⚠ **Modrinth の Maven は `maven-metadata.xml` に GET は 200、HEAD は 404 を返す**
