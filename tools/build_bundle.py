@@ -258,6 +258,78 @@ def layer_origins(blob):
     return bool(d.get("replace")), out
 
 
+UNION_LANG = "lang"
+
+
+def merge_kind_any(path):
+    """`data/` だけでなく `assets/**/lang/*.json` も種類として見る。"""
+    p = path.split("/")
+    if len(p) >= 4 and p[0] == "assets" and p[2] == "lang" and path.endswith(".json"):
+        return UNION_LANG
+    return merge_kind(path)
+
+
+def merge_tag(owners):
+    """⚠⚠ **タグを足し合わせる**（1つ選ばない）。
+
+    ⚠ Minecraft は `replace:false` のタグを**全部の pack から足す**
+    （`net/minecraft/tags/TagLoader.java`——`replace` が真なら `list.clear()`）。
+    ⚠ 1つの jar に畳むとその足し算が起きないので、⚠ **ここで先にやっておく。**
+
+    ⚠ **順序は入力の順**（`TOP` の並び）。⚠ `replace:true` が来たら、そこまでを捨てる。
+    """
+    values, replaced_by = [], None
+    for label, blob in owners:
+        try:
+            d = json.loads(blob.decode("utf-8-sig"))
+        except Exception:
+            return None, "⚠ 読めない（形が違う）"
+        if not isinstance(d, dict) or "values" not in d:
+            return None, "⚠ `values` が無い"
+        if d.get("replace"):
+            values, replaced_by = [], label      # ⚠ そこまでの寄与を捨てる決まり
+        for v in d.get("values", []):
+            if v not in values:                  # ⚠ 重複は入れない（同じ id が2回出ても害は無いが読みにくい）
+                values.append(v)
+    out = {"replace": False, "values": values}
+    note = ("⚠ `%s` の `replace:true` で、それより前の分は捨てた" % replaced_by
+            if replaced_by else "")
+    return json.dumps(out, indent=2, ensure_ascii=False).encode("utf-8"), note
+
+
+def merge_lang(owners):
+    """⚠⚠ **訳を鍵ごとに合わせる**（ファイルを1つ選ばない）。
+
+    ⚠ 同じ鍵が両方に在れば**後の入力が勝つ**。⚠ 片方にしか無い鍵は**両方とも残る。**
+    ⚠ **これが「1つ選ぶ」との違い**——選ぶと、選ばなかった側だけが持つ鍵が丸ごと消える。
+    """
+    out, notes = {}, []
+    for label, blob in owners:
+        try:
+            d = json.loads(blob.decode("utf-8-sig"))
+        except Exception:
+            return None, "⚠ 読めない（形が違う）"
+        if not isinstance(d, dict):
+            return None, "⚠ 地図の形ではない"
+        over = [k for k in d if k in out and out[k] != d[k]]
+        if over:
+            notes.append("%s が %d 鍵を上書き" % (label, len(over)))
+        out.update(d)
+    return (json.dumps(out, indent=2, ensure_ascii=False).encode("utf-8"),
+            "／".join(notes))
+
+
+# ⚠ 種類 → 合わせ方。⚠ **ここに無い種類は「1つ選ぶ」のまま**（それが正しい種類）。
+MERGERS = {
+    UNION_TAG: merge_tag,
+    UNION_LANG: merge_lang,
+    # ⚠⚠ `origin_layers` は入れていない——欄ごとの合成は `PartialLayer.merge` を写すことになり、
+    #    ⚠ **上流の実装と2か所に同じ規則を持つ**。⚠ いまぶつかっているのは1件だけで、
+    #    ⚠ `LOSSY_OK` に理由つきで置いてある。⚠ **段4で当部の層を入れるときに、
+    #    生成器（`origins_setup/build.py`）が1枚に作る**ほうが筋が良い。
+}
+
+
 def lost_by_picking(path, owners, winner_label):
     """⚠⚠ **1つ選んだせいで消える値**を数える。返り値: (種類, 消える値の一覧, 説明)。
 
@@ -980,6 +1052,7 @@ def run(write=False):
     out = os.path.join(OUT_DIR, "eruto-origins-0.1.0.jar")
     at = []
     lang_dropped = []          # ⚠ 負けた名前空間から落とした訳の鍵（必ず印字する）
+    merged_paths = []          # ⚠ 1つ選ばずに**合わせた**入り口（必ず印字する）
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
         for n, owners in sorted(entries.items()):
             if n in drop or n.startswith("META-INF/jarjar/"):
@@ -1020,6 +1093,17 @@ def run(write=False):
                 print("   pack.mcmeta: pack_format %d を採った" % fmt)
                 z.writestr(n, raw)
                 continue
+            # ⚠⚠ **合わせられる種類は、選ばずに合わせる**（2026-09-01）。
+            #    ⚠ タグと lang は**足し合わせ**なので、1つ選ぶと片方の値が丸ごと消える。
+            merger = MERGERS.get(merge_kind_any(n)) if len(owners) > 1 else None
+            if merger and len({b for _l, b in owners}) > 1:
+                merged, note = merger(owners)
+                if merged is not None:
+                    merged_paths.append((n, [l for l, _b in owners], note))
+                    z.writestr(n, merged)
+                    continue
+                merged_paths.append((n, [l for l, _b in owners],
+                                     "⚠ 合わせられなかった（%s）→ 1つ選ぶ" % note))
             pick = DECIDED[n][0] if n in DECIDED else None
             blob = next((b for l, b in owners if pick and l.startswith(pick)),
                         owners[0][1])
@@ -1043,6 +1127,13 @@ def run(write=False):
         z.writestr("META-INF/jarjar/metadata.json", jarjar_meta(winners, metas, extra))
         print("   入れ子で入れた: 土台 %d 本 ＋ 混ぜない MOD %d 本"
               % (len(winners), len(extra)))
+    # ⚠⚠ **合わせた入り口を名指しで出す**（1つ選ばなかったことを見えるようにする）。
+    if merged_paths:
+        print("   ⚠ 1つ選ばずに**合わせた**入り口: %d 件" % len(merged_paths))
+        for n, labels, note in sorted(merged_paths):
+            print("      %-56s ← %s" % (n, "＋".join(labels)))
+            if note:
+                print("           %s" % note)
     # ⚠⚠ **落とした訳の鍵を名指しで出す**（黙って消さない）。
     if lang_dropped:
         print("   ⚠ 負けた名前空間から落とした訳の鍵: %d 件" % len(lang_dropped))
@@ -1170,6 +1261,75 @@ def _self_test_body():
         print("  ok 陰性 勝った側は残し、負けた側からだけ落とす")
     else:
         print("  NG 陰性 落とし方が逆（勝ち側 %s ／ 負け側 %s）" % (drop_w, drop_l)); ng += 1
+
+    # ⚠⚠ **合成の対照**（2026-09-01）。⚠ **段4で本当にぶつかるファイルで試す。**
+    #    ⚠ 作り物ではなく、`origins_diet` と混ぜた jar の実物を使う——
+    #    ⚠ **段4に入った瞬間これが起きる**ので、その前に効くことを見ておく。
+    W3 = os.path.join(MC, "worlds", "world-3")
+    dp_meat = os.path.join(W3, "datapacks", "origins_diet", "src", "data",
+                           "origins", "tags", "items", "meat.json")
+    jar_meat = None
+    for stem in TOP:
+        with zipfile.ZipFile(resolve(stem)) as z:
+            try:
+                jar_meat = z.read("data/origins/tags/items/meat.json")
+                break
+            except KeyError:
+                continue
+    if jar_meat is None or not os.path.isfile(dp_meat):
+        print("  – 合成 試験の材料が無い（meat.json）")
+    else:
+        with io.open(dp_meat, "rb") as fh:
+            dp_blob = fh.read()
+        a = json.loads(jar_meat.decode("utf-8-sig")).get("values", [])
+        b = json.loads(dp_blob.decode("utf-8-sig")).get("values", [])
+        merged, _note = merge_tag([("jar", jar_meat), ("datapack", dp_blob)])
+        got = json.loads(merged.decode("utf-8")).get("values", [])
+        # ⚠ 陽性: 両方の値が残ること（＝1つ選ぶと消えていた分）
+        miss_a = [v for v in a if v not in got]
+        miss_b = [v for v in b if v not in got]
+        if not miss_a and not miss_b and len(got) == len(a) + len(b):
+            print("  ok 陽性 タグを合わせた（jar %d ＋ datapack %d → %d 件・欠け 0）"
+                  % (len(a), len(b), len(got)))
+        else:
+            print("  NG 陽性 合わせ損ねた（jar から %d ／ datapack から %d 欠け・計 %d）"
+                  % (len(miss_a), len(miss_b), len(got)))
+            ng += 1
+        # ⚠ 陰性: **1つ選ぶと本当に消える**ことを見る（合成が要る理由の対照）
+        if len([v for v in a if v not in b]) > 0:
+            print("  ok 陰性 1つ選ぶと %d 件が消えていた（合成が要る理由）"
+                  % len([v for v in a if v not in b]))
+        else:
+            print("  NG 陰性 1つ選んでも消えない（材料が対照になっていない）")
+            ng += 1
+        # ⚠ 陽性: `replace:true` はそこまでを捨てること
+        rep = json.dumps({"replace": True, "values": ["x:only"]}).encode()
+        m2, _n2 = merge_tag([("jar", jar_meat), ("rep", rep)])
+        if json.loads(m2.decode("utf-8"))["values"] == ["x:only"]:
+            print("  ok 陽性 `replace:true` はそれより前を捨てる")
+        else:
+            print("  NG 陽性 `replace:true` が効いていない"); ng += 1
+
+    # ⚠ 陽性: 訳は鍵ごとに合わさること（どちらか一方だけが持つ鍵も残る）
+    la = json.dumps({"a": "1", "same": "old"}).encode()
+    lb = json.dumps({"b": "2", "same": "new"}).encode()
+    lm, _ln = merge_lang([("A", la), ("B", lb)])
+    d = json.loads(lm.decode("utf-8"))
+    if d == {"a": "1", "b": "2", "same": "new"}:
+        print("  ok 陽性 訳を鍵ごとに合わせた（後の入力が勝つ／片方だけの鍵も残る）")
+    else:
+        print("  NG 陽性 訳の合成が違う: %s" % d); ng += 1
+
+    # ⚠ 陰性: 選ぶべき種類には合成を当てないこと
+    for p, want in (("data/origins/powers/light_armor.json", None),
+                    ("data/origins/tags/items/meat.json", UNION_TAG),
+                    ("assets/origins/lang/ja_jp.json", UNION_LANG)):
+        got_kind = merge_kind_any(p)
+        has = MERGERS.get(got_kind) is not None
+        if (want is None and not has) or (want is not None and got_kind == want and has):
+            print("  ok 種類の見分け %-46s → %s" % (p, got_kind))
+        else:
+            print("  NG 種類の見分け %s → %s" % (p, got_kind)); ng += 1
 
     # ⚠ 陰性: 決めた表の宛先が、実際にその入り口を持っていること
     sink, _c, _d, _w = gather()
