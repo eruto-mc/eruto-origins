@@ -486,6 +486,37 @@ def pick_by_priority(owners):
     return tops[0][2], tops[0][1], prios
 
 
+def strip_priority(path, blob):
+    """⚠⚠ **混ぜ終わったら `loading_priority` を消す**（2026-09-01・依頼者の指摘）。
+
+    ⚠ **なぜ**: 「⚠ 優先度で対応しようとすると、⚠⚠ **複雑な CSS 構造みたいな
+    修正の難しさ**が生まれる」。⚠ そのとおりで、⚠ **1つのファイルを開いても
+    何が勝つか分からない**——統合の目的そのものに反する。
+
+    ⚠⚠ **1つの zip の中に同じパスは1つしか置けないので、優先度は競う相手を持たない。**
+    ⚠ 残しても効かないのに、⚠ **読む人には「まだ競っている」ように見える。**
+
+    ⚠ **消せるのは、混ぜる側が決着を済ませたから**——`pick_by_priority` が
+    ⚠ **Minecraft と同じ規則で勝者を選び切っている**ので、結果は変わらない。
+
+    ⚠ **例外は無い**（`powers` / `origins` / `origin_layers` のどれでも消す）。
+    ⚠ 消したことは件数で必ず出す（黙って書き換えない）。
+    """
+    kind = merge_kind(path)
+    if kind not in (PICK_ONE, UNION_LAYER):
+        return blob, False
+    if b"loading_priority" not in blob:
+        return blob, False
+    try:
+        d = json.loads(blob.decode("utf-8-sig"))
+    except Exception:
+        return blob, False
+    if not isinstance(d, dict) or "loading_priority" not in d:
+        return blob, False
+    d.pop("loading_priority")
+    return json.dumps(d, indent=2, ensure_ascii=False).encode("utf-8"), True
+
+
 def lost_by_picking(path, owners, winner_label):
     """⚠⚠ **1つ選んだせいで消える値**を数える。返り値: (種類, 消える値の一覧, 説明)。
 
@@ -1229,6 +1260,7 @@ def run(write=False):
     lang_dropped = []          # ⚠ 負けた名前空間から落とした訳の鍵（必ず印字する）
     merged_paths = []          # ⚠ 1つ選ばずに**合わせた**入り口（必ず印字する）
     picked_by_priority = []    # ⚠ `loading_priority` で決めた入り口（必ず印字する）
+    priority_stripped = []     # ⚠⚠ 決着後に `loading_priority` を消した入り口（必ず印字する）
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
         for n, owners in sorted(entries.items()):
             if n in drop or n.startswith("META-INF/jarjar/"):
@@ -1272,29 +1304,37 @@ def run(write=False):
             # ⚠⚠ **合わせられる種類は、選ばずに合わせる**（2026-09-01）。
             #    ⚠ タグと lang は**足し合わせ**なので、1つ選ぶと片方の値が丸ごと消える。
             merger = MERGERS.get(merge_kind_any(n)) if len(owners) > 1 else None
+            blob = None
             if merger and len({b for _l, b in owners}) > 1:
                 merged, note = merger(owners)
                 if merged is not None:
                     merged_paths.append((n, [l for l, _b in owners], note))
-                    z.writestr(n, merged)
-                    continue
-                merged_paths.append((n, [l for l, _b in owners],
-                                     "⚠ 合わせられなかった（%s）→ 1つ選ぶ" % note))
-            pick = DECIDED[n][0] if n in DECIDED else None
-            if pick is None and len(owners) > 1 and merge_kind(n) == PICK_ONE:
-                # ⚠⚠ **Minecraft と同じ決め方**（`loading_priority` の最大）。
-                pb, who, _pr = pick_by_priority(owners)
-                if pb is not None:
-                    picked_by_priority.append((n, who))
-                    z.writestr(n, pb)
-                    continue
-            blob = next((b for l, b in owners if pick and l.startswith(pick)),
-                        owners[0][1])
-            # ⚠⚠ **負けた名前空間の訳から、決めた鍵を落とす**（2026-09-01）。
-            #    ⚠ 落とした分は必ず印字する（黙って消さない）。
-            blob, dropped_keys = apply_lang_decision(n, blob)
-            for k in dropped_keys:
-                lang_dropped.append((n, k))
+                    blob = merged
+                else:
+                    merged_paths.append((n, [l for l, _b in owners],
+                                         "⚠ 合わせられなかった（%s）→ 1つ選ぶ" % note))
+            if blob is None:
+                pick = DECIDED[n][0] if n in DECIDED else None
+                if pick is None and len(owners) > 1 and merge_kind(n) == PICK_ONE:
+                    # ⚠⚠ **Minecraft と同じ決め方**（`loading_priority` の最大）。
+                    pb, who, _pr = pick_by_priority(owners)
+                    if pb is not None:
+                        picked_by_priority.append((n, who))
+                        blob = pb
+                if blob is None:
+                    blob = next((b for l, b in owners if pick and l.startswith(pick)),
+                                owners[0][1])
+                    # ⚠⚠ **負けた名前空間の訳から、決めた鍵を落とす**（2026-09-01）。
+                    #    ⚠ 落とした分は必ず印字する（黙って消さない）。
+                    blob, dropped_keys = apply_lang_decision(n, blob)
+                    for k in dropped_keys:
+                        lang_dropped.append((n, k))
+            # ⚠⚠ **書き出し口を1つにまとめてある**（2026-09-01）。
+            #    ⚠ 以前は3か所に散っており、⚠ **`strip_priority` を足すとき
+            #    どれかを直し忘れる形**だった（当部が何度も踏んでいる型）。
+            blob, stripped = strip_priority(n, blob)
+            if stripped:
+                priority_stripped.append(n)
             z.writestr(n, blob)
         z.writestr("META-INF/accesstransformer.cfg", "\n".join(at))
         z.writestr("META-INF/MANIFEST.MF",
@@ -1310,6 +1350,12 @@ def run(write=False):
         z.writestr("META-INF/jarjar/metadata.json", jarjar_meta(winners, metas, extra))
         print("   入れ子で入れた: 土台 %d 本 ＋ 混ぜない MOD %d 本"
               % (len(winners), len(extra)))
+    # ⚠⚠ **優先度を消した件数を出す**（黙って書き換えない）。
+    if priority_stripped:
+        print("   ⚠⚠ 決着後に `loading_priority` を消した: %d 件"
+              % len(priority_stripped))
+        print("      （⚠ 1つの zip に同じパスは1つしか置けないので、"
+              "優先度は競う相手を持たない。⚠ 残すと読む人を惑わせるだけ）")
     # ⚠⚠ **優先度で決めた分を数で出す**（82 件を1件ずつは出さない。⚠ 内訳は下の表）。
     if picked_by_priority:
         import collections as _c
