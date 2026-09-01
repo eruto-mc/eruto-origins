@@ -32,3 +32,11 @@ run/
 
 # ⚠ `tools/check_bundle_parity.py` が `build_bundle.py` を import するので出る
 __pycache__/
+
+# ⚠⚠ 当部が受け入れた shifting_origins が要る jar（2026-09-01）。
+#    ⚠ **追跡しない**——MOD の再配布になるため（shifting_origins も同じ扱いだった）。
+#    ⚠ 中身: toughasnails.jar（渇きの API）。
+#    ⚠ **写した元は dev/instance/mods の実物**（版がずれると、
+#      渇きの値を上流の「浄水の瓶」に合わせた根拠が消える）。
+#    ⚠ clone しただけではビルドできない。⚠ **origins 本体だけを建てるなら要らない。**
+libs/
