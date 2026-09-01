@@ -86,12 +86,25 @@ def mor_drop():
 
 
 def resolve_jar(key):
-    hits = sorted(f for f in os.listdir(MODS)
-                  if f.startswith(key) and f.endswith(".jar"))
-    if len(hits) != 1:
-        raise SystemExit("!! `%s` で始まる jar が %d 本（1本であるべき）: %s"
-                         % (key, len(hits), ", ".join(hits) or "無し"))
-    return os.path.join(MODS, hits[0])
+    """配っている jar を1本に決める。
+
+    ⚠⚠ **`instance/mods` だけを見ていたので、2026-09-02 に壊れていた。**
+    ⚠ 混ぜた jar へ入れ替えると、⚠ **比べる相手（元の一族の jar）は退避先へ移る**ので、
+    ⚠ `origins-classes-forge-` が **0 本**になって落ちていた。
+    ⚠⚠ **統合が進むほど確実に壊れる形**——この道具は「配っている jar と比べる」ためのもので、
+    ⚠ その相手が `mods` から居なくなるのが**統合の狙いそのもの**だから。
+
+    ⇒ ⚠ **探し方は写さない。`build_bundle.resolve()` を呼ぶ**（退避先も版の大小も向こうが持つ）。
+    ⚠ ただし **`USE_BUILT` は落とす**——⚠⚠ **ここが要るのは「配っている jar」**であって、
+    ⚠ 当部が建てた物ではない（それと比べたら、いつでも一致してしまう）。
+    """
+    sys.path.insert(0, HERE)
+    import build_bundle as BB          # noqa: E402  ⚠ 探し方はあちらが正
+    was, BB.USE_BUILT = BB.USE_BUILT, False
+    try:
+        return BB.resolve(key)
+    finally:
+        BB.USE_BUILT = was
 
 
 def source_entries(roots):
