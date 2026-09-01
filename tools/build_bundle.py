@@ -1178,6 +1178,46 @@ def substitute_jar_version(label, text, impl):
     return text.replace("${file.jarVersion}", impl)
 
 
+REFMAP_RE = re.compile(r'("refmap"\s*:\s*")([^"]*)(")')
+
+
+def resolve_refmap(name, text, have):
+    """mixin 設定の `refmap` に残った Gradle の置き換えを、**実在する名前へだけ**解く。
+
+    → (直した中身, 元の名前, 直した名前)。直すものが無ければ (text, None, None)。
+
+    ⚠⚠ **なぜ要るか（2026-09-01 に遊び用サーバのログで捕まえた）**:
+
+        [main/WARN] [mixin/]: Reference map '${mod_id}.refmap.json'
+        for medievalorigins.mixins.json could not be read.
+
+    ⚠ MOR が上流で `refmap: "${mod_id}.refmap.json"` と書いており、
+    ⚠ **`${mod_id}` が解かれないまま配られている**（当部の書き換えではない）。
+
+    ⚠ **いまは実害が無い**——⚠⚠ **この設定は mixin を 0 枚しか持たない**ので、
+    写す相手が居ない。⚠ **だから直す**：MOR が1枚でも足した日に、
+    ⚠⚠ **警告1行のまま黙って当たらなくなる**（`check_mixin_targets.py` は
+    起動ログを読む側なので、当たらない mixin は見えても、写しが無い理由までは言わない）。
+
+    ⚠ **推測で埋めない。** 置き換えた結果の名前が jar の中に**実在するときだけ**採る。
+    ⚠ 解けなければ**落とす**（黙って `${...}` のまま配らない）。
+    """
+    m = REFMAP_RE.search(text)
+    if not m or "${" not in m.group(2):
+        return text, None, None
+    old = m.group(2)
+    # ⚠ 目印は「その設定の名前」から採る。`a.b.mixins.json` なら `a.b` と `a` を試す。
+    stem = name[:-len(".mixins.json")] if name.endswith(".mixins.json") else name
+    for cand in (stem, stem.split(".")[0]):
+        for token in re.findall(r"\$\{[^}]+\}", old):
+            new = old.replace(token, cand)
+            if new in have:
+                return (text[:m.start(2)] + new + text[m.end(2):]), old, new
+    raise SystemExit(
+        "!! `%s` の refmap `%s` を解けない（当ててみた名前が jar の中に無い）。\n"
+        "⚠⚠ **推測で埋めない。** 元の jar を直すか、ここへ当て先を書く。" % (name, old))
+
+
 def merge_mods_toml(texts):
     """`[[mods]]` と `[[dependencies.*]]` を全部並べる。⚠ 前置きは最初の1本から採る。
 
@@ -1367,6 +1407,20 @@ def run(write=False):
           % (len(entries), len(cfgs), len(bad)))
     print("   ⚠ MOR から抜く: %d 件" % len(drop))
 
+    # ⚠⚠ **mixin 設定の refmap に Gradle の置き換えが残っていないか**（2026-09-01）。
+    #    ⚠ 遊び用サーバのログで捕まえた（`${mod_id}.refmap.json` could not be read）。
+    #    ⚠ **作る前に見て、解けなければ落ちる**（`resolve_refmap` が投げる）。
+    refmap_left = []
+    for n in cfgs:
+        text = entries[n][0][1].decode("utf-8", "replace")
+        _t, old, new = resolve_refmap(n, text, set(entries))
+        if old:
+            refmap_left.append((n, old, new))
+    if refmap_left:
+        print("== ⚠ refmap の置き換えが残っていたので解く（%d 件）==" % len(refmap_left))
+        for n, old, new in refmap_left:
+            print("   %-40s %s → %s" % (n, old, new))
+
     # ⚠⚠ **混ぜてよい形か**（modLoader と class の有無）
     notok = check_mergeable(melted)
     if notok:
@@ -1472,6 +1526,7 @@ def run(write=False):
     merged_paths = []          # ⚠ 1つ選ばずに**合わせた**入り口（必ず印字する）
     picked_by_priority = []    # ⚠ `loading_priority` で決めた入り口（必ず印字する）
     priority_stripped = []     # ⚠⚠ 決着後に `loading_priority` を消した入り口（必ず印字する）
+    refmap_fixed = []          # ⚠ refmap の置き換えを解いた設定（必ず印字する）
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
         for n, owners in sorted(entries.items()):
             if n in drop or n.startswith("META-INF/jarjar/"):
@@ -1546,7 +1601,16 @@ def run(write=False):
                         lang_dropped.append((n, k))
             # ⚠⚠ **書き出し口を1つにまとめてある**（2026-09-01）。
             #    ⚠ 以前は3か所に散っており、⚠ **`strip_priority` を足すとき
-            #    どれかを直し忘れる形**だった（当部が何度も踏んでいる型）。
+            #    どれかを直し忘れる文だった**（当部が何度も踏んでいる型）。
+            #
+            # ⚠ mixin 設定の refmap に残った置き換えも、⚠ **ここで解く**
+            #    （上で解けることを確かめてから来ている）。
+            if n in cfgs:
+                fixed, old, new = resolve_refmap(
+                    n, blob.decode("utf-8", "replace"), set(entries))
+                if old:
+                    blob = fixed.encode("utf-8")
+                    refmap_fixed.append((n, old, new))
             blob, stripped = strip_priority(n, blob)
             if stripped:
                 priority_stripped.append(n)
@@ -1579,6 +1643,11 @@ def run(write=False):
     if added_paths:
         print("   ⚠ 当部が**新しく足した**入り口: %d 件（上書きではない）"
               % len(added_paths))
+    # ⚠⚠ **refmap を解いた分を名指しで出す**（黙って書き換えない）。
+    if refmap_fixed:
+        print("   ⚠ mixin 設定の refmap を解いた: %d 件" % len(refmap_fixed))
+        for n, old, new in sorted(refmap_fixed):
+            print("      %-40s %s → %s" % (n, old, new))
     # ⚠⚠ **優先度を消した件数を出す**（黙って書き換えない）。
     if priority_stripped:
         print("   ⚠⚠ 決着後に `loading_priority` を消した: %d 件"
@@ -1749,6 +1818,43 @@ def _self_test_body():
         print("  ok 陽性 献立を変えると版が変わる（%s → %s）" % (v_now, v_nested))
     else:
         print("  NG 陽性 溶かす／入れ子を変えても版が同じ（%s）" % v_now); ng += 1
+
+    # ⚠⚠ **refmap の置き換えを解く側の対照**（2026-09-01）。
+    #    ⚠ 実物で1件在る（MOR の `${mod_id}`）。⚠ **在るうちに対照にしておく。**
+    cfgs_now = sorted({n for n in sink0["entries"]
+                       if n.endswith(".mixins.json") and "/" not in n})
+    left = []
+    for n in cfgs_now:
+        t = sink0["entries"][n][0][1].decode("utf-8", "replace")
+        m = REFMAP_RE.search(t)
+        if m and "${" in m.group(2):
+            left.append((n, m.group(2)))
+    if left:
+        n, old = left[0]
+        fixed, got_old, got_new = resolve_refmap(n, sink0["entries"][n][0][1]
+                                                 .decode("utf-8", "replace"),
+                                                 set(sink0["entries"]))
+        if got_new and got_new in sink0["entries"] and "${" not in fixed:
+            print("  ok 陽性 refmap の置き換えを解いた（%s: %s → %s）"
+                  % (n, got_old, got_new))
+        else:
+            print("  NG 陽性 refmap を解けていない（%s: %s）" % (n, old)); ng += 1
+    else:
+        print("  – refmap の置き換えは1件も残っていない（対照の材料が無い）")
+    # ⚠ 陽性: **当て先が jar に無ければ落ちる**（推測で埋めない）
+    try:
+        resolve_refmap("zzz-no-such.mixins.json",
+                       '{"refmap": "${mod_id}.refmap.json"}', set())
+        print("  NG 陽性 当て先が無くても落ちない（推測で埋めている）"); ng += 1
+    except SystemExit:
+        print("  ok 陽性 refmap の当て先が jar に無ければ落ちる")
+    # ⚠ 陰性: 置き換えの無い refmap は触らない（**要らない差を作らない**）
+    plain = '{"refmap": "origins.refmap.json"}'
+    if resolve_refmap("origins.mixins.json", plain, {"origins.refmap.json"}) \
+            == (plain, None, None):
+        print("  ok 陰性 置き換えの無い refmap は触らない")
+    else:
+        print("  NG 陰性 触らなくてよい refmap を書き換えている"); ng += 1
 
     # ⚠⚠ 相手の名前空間へ書いている分を見る側の対照（2026-09-01・あなたの指摘）
     # ⚠ 2026-09-01 に 5 → 2 件へ減った。⚠⚠ **検査が緩んだのではなく、
