@@ -12,8 +12,8 @@
 	branch = eruto/world3-1.20.1
 [submodule "medieval"]
 	path = medieval
-	url = https://github.com/muon-rw/Medieval-Origins-Revival.git
-	branch = 1.20.1-multiloader
+	url = https://github.com/eruto-mc/Medieval-Origins-Revival.git
+	branch = eruto/world3-1.20.1
 [submodule "origins-classes"]
 	path = origins-classes
 	url = https://github.com/LimonBlaze/origins-classes-forge.git
