@@ -18,8 +18,12 @@
 
 ## 入れる物（⚠ 版番号は書かない。名前の頭で引く）
 
-上の 7 本を**1つに混ぜる**。⚠ **その中の土台（calio・apoli・AEA・Apugli・mixinextras）は
-入れ子のまま**入れる（版の重なりは Forge に任せる）。
+上の 7 本を**1つに混ぜる**。⚠ その中の土台は既定で**入れ子のまま**入れる
+（版の重なりは Forge に任せる）。
+
+⚠⚠ **例外は `DISSOLVE` に名前と理由を書いたものだけ**（2026-09-01・apoli）。
+⚠ **溶かしてよいかは「他の MOD が同じ物を入れ子で持っていないか」で決まる。**
+⚠ 判断の材料は `DISSOLVE` の注記に数字で書いてある。
 
 ## ⚠ 混ぜ方（1つしか置けない物）
 
@@ -30,7 +34,7 @@
 | `META-INF/accesstransformer.cfg` | 連結（どこから来たかの印を付ける） |
 | `META-INF/coremods.json` | 対応表を合併。⚠ **鍵がぶつかったら落ちる** |
 | `pack.mcmeta` | ⚠ `pack_format` が最大のものを1つ |
-| `META-INF/jarjar/**` | ⚠⚠ **土台は入れ子のまま入れる。溶かさない。**⚠ 2026-08-30 に溶かして遊び用サーバが起動できなかった（`mixinextras` を**他の MOD 30 本**が持っており、`Modules origins and mixinextras export package …` で落ちる）。⚠ **重なりを整理するのは JarJar の仕事** |
+| `META-INF/jarjar/**` | ⚠ **土台は既定で入れ子のまま入れる**（⚠ 2026-08-30 に全部溶かして遊び用サーバが起動できなかった。`mixinextras` を**他の MOD 30 本**が持っており、`Modules origins and mixinextras export package …` で落ちる）。⚠⚠ **溶かすのは `DISSOLVE` に書いた物だけ**——⚠ **他が誰も持っていない土台は、JarJar に任せる相手が居ない** |
 
 ## ⚠⚠ 静かに間違えない作り
 
@@ -150,6 +154,32 @@ NEST_AS_IS = {
         "group": "eruto-mc",       # ⚠ 当部が包み直したもの、という意味の名前
         "artifact": "solapplepie_origins_fix",
     },
+}
+
+# ⚠⚠ **入れ子をやめて本体へ溶かす土台**（2026-09-01）。鍵は `artifact_of()` が返す名前。
+#
+# ⚠ **なぜ既定が「入れ子のまま」なのか**: 2026-08-30 に全部溶かして遊び用サーバが
+# ⚠ 起動前に落ちた——`mixinextras` を**他の MOD が入れ子で持っている**ので、
+# ⚠ 同じ package を2つのモジュールが出す形になった。
+# ⚠⚠ **だから「溶かしてよいか」は、他所が同じ物を持っているかで決まる。**
+#
+# ⚠ **溶かす前に測ること（この3つが揃わないうちは足さない）**:
+#   ⑴ その土台を**入れ子で持っている他の MOD が 0 本**か
+#   ⑵ その modId を**外側で名乗っている jar が他に 0 本**か
+#   ⑶ その土台が出す package が、**他の MOD の package と 0 個**しかぶつからないか
+#      （⚠ ⑶ は `check_packages` が毎回見るので、足した後も鳴り続ける）
+DISSOLVE = {
+    "apoli-forge": (
+        "⚠⚠ **2026-09-01 に測った**（instance/mods 348本・server 301本・"
+        "server-play 301本・_disabled 127本の `META-INF/jarjar/` を2段まで開いた）: "
+        "⚠ apoli を**入れ子で持っている他の MOD は 0 本**"
+        "（当たったのは混ぜた jar 自身と、`_disabled` に退避済みの旧 jar だけ）。"
+        "⚠ apoli の modId を**外側で名乗る jar も 0 本**。"
+        "⚠ apoli が出す package 77 個は、⚠⚠ **他の MOD 347 本の 8158 個と 0 個しか"
+        "ぶつからない**。⚠ 対して `mixinextras` は他の MOD 18 本が入れ子で持っており、"
+        "⚠⚠ **それが 2026-08-30 に落ちた理由**——同じ形ではない。"
+        "⚠ apoli 自身は入れ子を1本も持たない（溶かしても JarJar の仕事が消えない）。"
+    ),
 }
 
 # ⚠⚠ **決めたぶつかり**。ここに無いぶつかりが出たら落ちる。
@@ -734,10 +764,18 @@ def bundle_version():
     ⚠ **日付だけでは足りない**（1日に何度も建てる）。⚠ **入力の指紋を足す**——
     ⚠⚠ **入力が1バイトでも違えば版が変わり、同じなら同じ版になる**（無駄に増えない）。
 
-    ⚠ 指紋に入れるのは「混ぜる素の jar の中身」だけ。⚠ **建てた時刻は入れない**
-    （入れると、何も変えていないのに毎回変わる）。
+    ⚠ 指紋に入れるのは「混ぜる素の jar の中身」と「**混ぜ方の献立**」。
+    ⚠ **建てた時刻は入れない**（入れると、何も変えていないのに毎回変わる）。
+
+    ⚠⚠ **献立を入れる理由（2026-09-01・`DISSOLVE` を足したとき気づいた）**:
+    ⚠ 素の jar が1バイトも変わらなくても、⚠⚠ **溶かすか入れ子にするかを変えれば
+    出来上がりは別物になる。** ⚠ 中身だけを指紋にすると、
+    ⚠⚠ **同じ版名で中身の違う jar が2つできる**——⚠ この版の付け方が防ぐと言った、
+    まさにその状態。⚠ **どの jar を入れるか・どれを溶かすか・どれを包み直すかを混ぜる。**
     """
     h = hashlib.sha1()
+    h.update(("献立|%s|%s|%s" % ("／".join(TOP), "／".join(sorted(NEST_AS_IS)),
+                                 "／".join(sorted(DISSOLVE)))).encode("utf-8"))
     for stem in list(TOP) + list(NEST_AS_IS):
         try:
             p = resolve(stem)
@@ -862,12 +900,16 @@ def artifact_of(jar_name):
     return name, tuple(int(x) for x in re.findall(r"\d+", ver))
 
 
-def collect(path, label, sink):
-    """jar を開いて (入り口 → 中身) を集める。
+def collect(src, label, sink):
+    """jar を開いて (入り口 → 中身) を集める。⚠ `src` はパスでも bytes でもよい。
 
     ⚠ **入れ子は辿らない。** どの版を採るかは `gather()` が**全部見つけてから**決める
     （⚠ ここで辿ると、段の深さの違いで版が競合しなくなる）。
+
+    ⚠ bytes を受けるのは `DISSOLVE` の分のため——⚠ **溶かす土台は入れ子の中に在り、
+    ファイルとして置かれていない。**
     """
+    path = io.BytesIO(src) if isinstance(src, bytes) else src
     with zipfile.ZipFile(path) as z:
         for n in z.namelist():
             if n.endswith("/") or n.startswith("META-INF/jarjar/"):
@@ -875,14 +917,20 @@ def collect(path, label, sink):
             sink["entries"].setdefault(n, []).append((label, z.read(n)))
 
 
-def gather():
-    """全部の入り口を1段に引き上げて集める。返り値は sink と、採った土台の一覧。
+def find_nested():
+    """入れ子の土台を全部見つけ、⑴ 入れ子のまま入れる分 ⑵ 溶かす分 に分ける。
+
+    返り値: (chosen, dropped, winners, melted)
 
     ⚠⚠ **版の選び方は「全部見つけてから、名前ごとに1つ」。**
     ⚠ 2026-08-30 に「見つけた順に、その回の中だけで比べる」書き方をしていて、
     ⚠⚠ **`mixinextras` の 0.2.1（Apugli の中の中）と 0.4.1（MOR の中）が
     別の回に居たので競合せず、2つの版が両方入っていた。**
     ⚠ 段の深さが違うだけで競合しないのは、⚠ **Forge の折り合いとも違う。**
+
+    ⚠⚠ **切り出してある理由**（2026-09-01）: ⚠ **検査する側（`check_bundle_parity`）も
+    「どれを溶かしたか」を知らないと、溶かした分を「増えた」と誤って鳴らす。**
+    ⚠ **一覧を写させない**——同じ関数を呼ばせる。
     """
     # 第1段: 入れ子の jar を**全部**見つける（中身はまだ集めない）
     found = collections.defaultdict(list)      # 名前 → [(jar名, bytes, 出どころ)]
@@ -904,26 +952,50 @@ def gather():
     # 第2段: 名前ごとに**版が最大の1つ**だけ採る
     chosen, dropped = [], []
     winners = []
+    melted = []                                # ⚠ 溶かす分（入れ子には入れない）
     for art, items in sorted(found.items()):
         best = max(items, key=lambda it: artifact_of(it[0])[1])
         for it in items:
             if it[0] != best[0]:
                 dropped.append((it[0], it[2]))
+        if art in DISSOLVE:
+            melted.append(best)
+            continue
         chosen.append((best[0], best[2]))
         winners.append(best)
 
+    # ⚠⚠ **`DISSOLVE` に書いたのに1本も当たらなかったら落ちる**（黙って通さない）。
+    #    ⚠ 上流が同梱をやめた日に、この表が**嘘の記述**として残るのを防ぐ。
+    missing = sorted(set(DISSOLVE) - {artifact_of(n)[0] for n, _r, _s in melted})
+    if missing:
+        raise SystemExit(
+            "!! `DISSOLVE` に書いてあるのに入れ子で見つからない: %s\n"
+            "⚠ **表が古い。** 上流が同梱をやめたなら、この行を消す。"
+            % "／".join(missing))
+    return chosen, dropped, winners, melted
+
+
+def gather():
+    """全部の入り口を1段に引き上げて集める。返り値は sink と、採った土台の一覧。"""
+    chosen, dropped, winners, melted = find_nested()
+
     # 第3段: 上の 7 本の中身だけ集める。
-    # ⚠⚠ **土台は溶かさない。入れ子のまま入れる。**
-    #    ⚠ 2026-08-30 に溶かして遊び用サーバが**起動できなかった**:
+    # ⚠ **土台は既定で溶かさない。入れ子のまま入れる。**
+    #    ⚠ 2026-08-30 に全部溶かして遊び用サーバが**起動できなかった**:
     #      java.lang.module.ResolutionException:
     #        Modules origins and mixinextras export package
     #        com.llamalad7.mixinextras.platform.forge to module ...
-    #    ⚠ `mixinextras` は**他の MOD 30 本が入れ子で持っている**。
+    #    ⚠ `mixinextras` は**他の MOD が入れ子で持っている**。
     #    ⚠⚠ **重なりを整理するのは JarJar の仕事**で、そこを奪ってはいけない。
+    #
+    # ⚠⚠ **例外は `DISSOLVE` の分だけ**（2026-09-01）——⚠ **他所が誰も持っていない土台には、
+    #    JarJar が整理する相手が居ない。** ⚠ 上の 7 本と同じ扱いで混ぜる。
     sink = {"entries": {}, "nested": {}}
     for stem in TOP:
         p = resolve(stem)
         collect(p, os.path.basename(p), sink)
+    for name, raw, _src in melted:
+        collect(raw, name, sink)
     # ⚠⚠ **段4: 当部の分を入れる**（2026-09-01）。
     #
     # ⚠⚠ **競わせない。同じパスが在れば「差し替える」**（2026-09-01・依頼者の指摘
@@ -947,7 +1019,7 @@ def gather():
             sink["entries"].setdefault(rel, []).append((label, blob))
             if not cur:
                 added_paths.append(rel)
-    return sink, chosen, sorted(set(dropped)), winners
+    return sink, chosen, sorted(set(dropped)), winners, melted
 
 
 def nest_as_is():
@@ -988,23 +1060,29 @@ def jarjar_meta(winners, metas, extra):
     return json.dumps({"jars": out}, indent=2, ensure_ascii=False)
 
 
-def check_mergeable():
+def check_mergeable(melted=()):
     """⚠⚠ **混ぜてよい形か**を作る側で見る（2026-08-30 に起動前で落ちたので足した）。
 
     ⚠ 見るのは2つ:
       ⑴ `modLoader` が `javafml` か（⚠ 1つの `mods.toml` は1つしか持てない）
       ⑵ class が1つでも在るか（⚠ `lowcodefml` は 0 個で、`@Mod` のクラスが無い）
+
+    ⚠⚠ **溶かす土台も同じ目で見る**（2026-09-01）。⚠ **`TOP` だけを見ていると、
+    `DISSOLVE` へ `lowcodefml` の物を足した日に黙って通る**——
+    ⚠ 2026-08-30 に `solapplepie_origins_fix` で踏んだのと同じ形。
     """
     bad = []
-    for stem in TOP:
-        p = resolve(stem)
+    targets = [(os.path.basename(resolve(stem)), resolve(stem)) for stem in TOP]
+    targets += [(name, raw) for name, raw, _src in melted]
+    for name, src in targets:
+        p = io.BytesIO(src) if isinstance(src, bytes) else src
         with zipfile.ZipFile(p) as z:
             t = z.read("META-INF/mods.toml").decode("utf-8", "replace")
             m = re.search(r'^\s*modLoader\s*=\s*["\']([^"\']+)', t, re.M)
             loader = m.group(1) if m else "（宣言なし）"
             ncls = sum(1 for n in z.namelist() if n.endswith(".class"))
         if loader != "javafml" or ncls == 0:
-            bad.append((os.path.basename(p), loader, ncls))
+            bad.append((name, loader, ncls))
     return bad
 
 
@@ -1222,12 +1300,17 @@ def check_packages(entries):
 
 def run(write=False):
     drop = mor_drop()
-    sink, chosen, dropped, winners = gather()
+    sink, chosen, dropped, winners, melted = gather()
     entries = sink["entries"]
 
     print("== 入れた jar ==")
     for stem in TOP:
         print("   %s" % os.path.basename(resolve(stem)))
+    if melted:
+        print("== ⚠⚠ **入れ子をやめて溶かす土台**（`DISSOLVE`）==")
+        for name, _raw, src in sorted(melted):
+            print("   %-46s ← %s" % (name, src))
+            print("        %s" % DISSOLVE[artifact_of(name)[0]])
     print("== 入れ子のまま入れる土台（⚠ 高いほうを採る）==")
     for name, src in sorted(chosen):
         print("   %-46s ← %s" % (name, src))
@@ -1285,7 +1368,7 @@ def run(write=False):
     print("   ⚠ MOR から抜く: %d 件" % len(drop))
 
     # ⚠⚠ **混ぜてよい形か**（modLoader と class の有無）
-    notok = check_mergeable()
+    notok = check_mergeable(melted)
     if notok:
         print("== ⚠⚠ 混ぜてはいけない形の jar が %d 本 ==" % len(notok))
         for name, loader, ncls in notok:
@@ -1579,7 +1662,7 @@ def _self_test_body():
         print("  ok 陽性 存在しない目印は落ちる")
 
     # ⚠⚠ package の衝突を見る側の対照（2026-08-30 に起動前で落ちた形）
-    sink0, _c0, _d0, _w0 = gather()
+    sink0, _c0, _d0, _w0, _m0 = gather()
     mine, clash, others = check_packages(sink0["entries"])
     HIT = "com.llamalad7.mixinextras.platform.forge"
     if HIT in others:
@@ -1598,6 +1681,74 @@ def _self_test_body():
         ng += 1
     else:
         print("  ok いまの構成で package のぶつかりは 0 個")
+
+    # ⚠⚠ **溶かす／入れ子のままの対照**（2026-09-01・`DISSOLVE` を足した日）。
+    #
+    # ⚠ この表は「溶かしてよい」と書ける場所なので、⚠⚠ **書けば通る形だと危ない。**
+    # ⚠ **効くこと（陽性）と、効きすぎないこと（陰性）を両方見る。**
+    if not _m0:
+        print("  NG 陰性 `DISSOLVE` に書いた土台が1本も溶けていない"); ng += 1
+    else:
+        melted_names = sorted(n for n, _r, _s in _m0)
+        print("  ok 陰性 溶かした土台 %d 本: %s" % (len(_m0), "／".join(melted_names)))
+        # ⚠ 陰性: 溶かした物が**入れ子の側にも居ない**こと（二重に入れたら太るだけ）
+        both = [n for n, _r, _s in _m0 if any(n == c for c, _s2 in _c0)]
+        if both:
+            print("  NG 陰性 溶かしたのに入れ子にも入れている: %s" % both); ng += 1
+        else:
+            print("  ok 陰性 溶かした物は入れ子の側に居ない")
+        # ⚠ 陰性: 溶かした土台の **mixin の設定が MixinConfigs に載る**こと
+        #   ⚠⚠ **落とすとログに1行も出ずに死ぬ**（設計書 4.5 の地雷2）
+        cfgs0 = {n for n in sink0["entries"]
+                 if n.endswith(".mixins.json") and "/" not in n}
+        want_cfg = "apoli.mixins.json"
+        if want_cfg in cfgs0:
+            print("  ok 陰性 溶かした土台の %s が mixin の設定に載っている" % want_cfg)
+        else:
+            print("  NG 陰性 %s が mixin の設定に無い（黙って死ぬ形）" % want_cfg); ng += 1
+
+    # ⚠⚠ **陽性: `mixinextras` を溶かすと本当にぶつかる**（2026-08-30 に落ちた形の再現）。
+    #    ⚠ **ここが 0 個のままなら、この番人は何も見ていない。**
+    keep_d = dict(DISSOLVE)
+    DISSOLVE["mixinextras-forge"] = "（自己試験）⚠ 対照のためだけに足す"
+    try:
+        sink_bad, _cb, _db, _wb, _mb = gather()
+        _m, clash_bad, _o = check_packages(sink_bad["entries"])
+    finally:
+        DISSOLVE.clear()
+        DISSOLVE.update(keep_d)
+    if clash_bad:
+        print("  ok 陽性 `mixinextras` を溶かすと package が %d 個ぶつかる"
+              "（2026-08-30 に落ちた形）" % len(clash_bad))
+    else:
+        print("  NG 陽性 `mixinextras` を溶かしてもぶつからない（番人が見ていない）")
+        ng += 1
+
+    # ⚠ 陽性: **表に書いたのに入れ子で見つからない**なら落ちること（表の腐り止め）
+    DISSOLVE["zzz-no-such-lib"] = "（自己試験）⚠ 対照のためだけに足す"
+    try:
+        gather()
+        print("  NG 陽性 `DISSOLVE` の宛先が無くても落ちない（表が腐っても黙る）")
+        ng += 1
+    except SystemExit:
+        print("  ok 陽性 `DISSOLVE` の宛先が入れ子に無ければ落ちる")
+    finally:
+        DISSOLVE.clear()
+        DISSOLVE.update(keep_d)
+
+    # ⚠⚠ **陽性: 献立を変えると版が変わる**（2026-09-01）。
+    #    ⚠ 素の jar が同じでも、⚠⚠ **溶かすかどうかで中身は別物**になる。
+    #    ⚠ ここが同じ版のままだと、⚠ **同じ名前で中身の違う jar が2つできる。**
+    v_now = bundle_version()
+    DISSOLVE.clear()
+    try:
+        v_nested = bundle_version()
+    finally:
+        DISSOLVE.update(keep_d)
+    if v_now != v_nested:
+        print("  ok 陽性 献立を変えると版が変わる（%s → %s）" % (v_now, v_nested))
+    else:
+        print("  NG 陽性 溶かす／入れ子を変えても版が同じ（%s）" % v_now); ng += 1
 
     # ⚠⚠ 相手の名前空間へ書いている分を見る側の対照（2026-09-01・あなたの指摘）
     # ⚠ 2026-09-01 に 5 → 2 件へ減った。⚠⚠ **検査が緩んだのではなく、
@@ -1737,7 +1888,7 @@ def _self_test_body():
     #    ⚠ 実際に 2026-09-01 に、この見張りが**配布 jar の世界を見て2件を誤って鳴らした**。
     was3, globals()["USE_BUILT"] = USE_BUILT, True
     try:
-        live_sink, _lc, _ld, _lw = gather()
+        live_sink, _lc, _ld, _lw, _lm = gather()
     finally:
         globals()["USE_BUILT"] = was3
     stale = [n for n in sorted(DECIDED)
@@ -1757,7 +1908,7 @@ def _self_test_body():
     #    ⚠ `explorer_kit` が実際にそうなった——`shifting_origins` を origins の
     #    ソースの木へ受け入れた日、⚠⚠ **配布 jar は前日の姿のまま**だった。
     #    ⚠ **飛ばすのではなく、建てた版でもう一度引いて確かめる**（黙って通さない）。
-    sink, _c, _d, _w = gather()
+    sink, _c, _d, _w, _m = gather()
     built_sink = None
     for n, (who, _why) in sorted(DECIDED.items()):
         owners = [l for l, _b in sink["entries"].get(n, [])]

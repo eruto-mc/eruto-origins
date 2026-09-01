@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-"""混ぜる**前の 7 本**と、混ぜた**後の 1 本**が、同じことを名乗っているかを突き合わせる。
+"""混ぜる**前の入力**と、混ぜた**後の 1 本**が、同じことを名乗っているかを突き合わせる。
+
+⚠ 入力は「上の 7 本 ＋ `DISSOLVE` で溶かした土台 ＋ 当部の datapack」。
+⚠ **どれも `build_bundle.py` に聞く**（写さない）。
 
   py -3.12 tools/check_bundle_parity.py
   py -3.12 tools/check_bundle_parity.py --detail
@@ -32,7 +35,7 @@
 
 ## 見るもの（4 つ。どれも「落ちた物を名指しする」）
 
-  ① modId と版      … 7 本を読んだときと、1 本を読んだときで同じか
+  ① modId と版      … 入力を読んだときと、1 本を読んだときで同じか
   ② MANIFEST の欄   … 元が持っていた欄のうち、捨てた物を名指しする
   ③ data / assets   … 入り口が 1 つでも落ちていないか（増えた分も出す）
   ④ mixin の設定    … 元の `*.mixins.json` が全部登録されているか
@@ -107,7 +110,13 @@ MANIFEST_DROP_OK = {
 COND_FIELD = "Implementation-Version"
 
 
-def read_jar(path):
+def read_jar(src):
+    """jar を {入り口: 中身} で読む。⚠ `src` はパスでも bytes でもよい。
+
+    ⚠ bytes を受けるのは `DISSOLVE` の分のため——⚠ **溶かした土台は入れ子の中に在り、
+    ファイルとして置かれていない。**
+    """
+    path = io.BytesIO(src) if isinstance(src, bytes) else src
     with zipfile.ZipFile(path) as z:
         return {n: z.read(n) for n in z.namelist() if not n.endswith("/")}
 
@@ -198,11 +207,18 @@ def gather_inputs():
     ⚠⚠ **段4 から、当部の datapack も入力**（2026-09-01）。
     ⚠ 教えないと **238 件が「増えた」に見える**——⚠ **検査が作る側に追いついていない**だけで、
     ⚠ そこを黙って通すと、⚠⚠ **本当に増えた物も見えなくなる。**
+
+    ⚠⚠ **`DISSOLVE` で溶かした土台も入力**（2026-09-01・apoli）。
+    ⚠ **入れ子は既定で入力から外している**（③ が `META-INF/jarjar/` を飛ばす）ので、
+    ⚠ 溶かした分を教えないと **830 件が「増えた」・modId が1個「増えた」に見える。**
+    ⚠ **一覧は写さない**——`BB.find_nested()` に聞く。
     """
     src = {}
     for stem in BB.TOP:
         p = BB.resolve(stem)
         src[os.path.basename(p)] = read_jar(p)
+    for name, raw, _from in BB.find_nested()[3]:
+        src[name] = read_jar(raw)
     for label, rel, blob in BB.datapack_entries():
         src.setdefault(label, {})[rel] = blob
     return src
@@ -242,7 +258,7 @@ def run(detail=False, bundle_path=None, src=None):
             print("   ok %-22s %s" % (mid, g))
     extra_ids = sorted(set(got) - set(want))
     for mid in extra_ids:
-        print("   !! %-22s 元の 7 本に居ない modId が増えた" % mid)
+        print("   !! %-22s 入力のどれにも居ない modId が増えた" % mid)
         ng.append("modId %s が増えた" % mid)
     print("   元 %d 個 ／ 混ぜた後 %d 個" % (len(want), len(got)))
 
