@@ -107,6 +107,10 @@ DATAPACKS = [
 ]
 USE_DATAPACKS = True
 
+# ⚠ 当部の分が相手の定義を**差し替えた**入り口／**新しく足した**入り口（必ず印字する）
+patched_paths = []
+added_paths = []
+
 
 def datapack_entries():
     """datapack の `data/**` を (見出し, 入り口, 中身) で返す。⚠ `pack.mcmeta` は入れない。"""
@@ -190,33 +194,21 @@ DECIDED = {
         "origins-forge-",
         "⚠ ここだけ**本物の上書き**（同じ中身の組が無い）。当部の物を採る。"
         "⚠ 出どころは受け入れた `shifting_origins`（`hidden` の無効化版ではなく実物）"),
-    # ── 段4（当部の datapack を jar へ入れる）で出たぶつかり（2026-09-01）──
+    # ── 段4 で出たぶつかりのうち、⚠⚠ **まだ人が決める必要が在るもの**（2026-09-01）──
     #
-    # ⚠ **`loading_priority` が無い種類**なので、道具は決められない。⚠ 1件ずつ開いて決めた。
-    # ⚠ **どれも「当部が意図して上書きしている物」**——datapack が後に読まれて勝っており、
-    # ⚠⚠ **jar へ入れても同じ結果にするには datapack の側を採る。**
-    "data/medievalorigins/functions/mdvlorigins/arachnae_extricate.mcfunction": (
-        "datapack:origins_setup",
-        "⚠ 当部が短くした版（6行 → 4行）。⚠ **いまも datapack が勝っている**ので、"
-        "同じ結果にするには当部の物を採る"),
-    "data/medievalorigins/functions/mdvlorigins/pixie_callon.mcfunction": (
-        "datapack:origins_setup",
-        "⚠ 当部が縮尺を変えた版（`pehkui:height` 0.166 → 0.444）。同上"),
+    # ⚠ 当部の分が相手を**差し替える**ようになった日（2026-09-01）に、
+    # ⚠⚠ **4件はぶつからなくなったので消した**——
+    # `arachnae_extricate.mcfunction` / `pixie_callon.mcfunction` /
+    # `data/origins/badges/active.json` / `同 toggle.json`。
+    # ⚠ **もうぶつかっていないのに「どちらを採る」と書いてあるのは嘘の記述**なので残さない。
+    # ⚠ 下の `check_decided_live()` が、古くなったら名指しする。
     "data/origins-classes/origin_layers/class.json": (
         "datapack:origins_setup",
         "⚠⚠ **当部の層の定義**（`default_origin`・`allow_random`・`name`・"
         "`missing_name` ほかを持つ。上流は4項目、当部は10項目）。"
-        "⚠ `replace` を持つので**丸ごと置き換えが決まり**——当部の物を採る"),
-    "data/origins/badges/active.json": (
-        "datapack:origins_setup",
-        "⚠ 当部が印の文言を差し替えた分。同上"),
-    "data/origins/badges/toggle.json": (
-        "datapack:origins_setup",
-        "⚠ 当部が印の文言を差し替えた分。同上"),
-    "pack.png": (
-        "origins-classes-forge",
-        "⚠ 中身は**設定画面に出す絵**だけ（`mods.toml` の `logoFile`）。"
-        "⚠ 遊びには1ミリも効かないので、Origins の物を1つ採る"),
+        "⚠ **層は足し合わせる種類**なので差し替えない——だから今も人が決める"),
+    # ⚠ `pack.png` の宣言は 2026-09-01 に消した——⚠⚠ **もうぶつかっていない**
+    #   （`origins-classes` の1本しか持っていない。⚠ `check_decided_live` が名指しした）。
 }
 
 # ⚠ 各 jar が「自分のもの」として書いてよい `data/<名前空間>/`。
@@ -932,11 +924,29 @@ def gather():
     for stem in TOP:
         p = resolve(stem)
         collect(p, os.path.basename(p), sink)
-    # ⚠⚠ **段4: 当部の datapack を最後に足す**（2026-09-01）。
-    #    ⚠ **順序が意味を持つ**——`MERGERS` の合成は入力の順で、⚠ **後が勝つ**。
-    #    ⚠ datapack は当部が上流を上書きするために書いた物なので、⚠ **最後に置く。**
+    # ⚠⚠ **段4: 当部の分を入れる**（2026-09-01）。
+    #
+    # ⚠⚠ **競わせない。同じパスが在れば「差し替える」**（2026-09-01・依頼者の指摘
+    # 「上書きする仕組み・優先度の仕組みは無くすって話じゃなかったのか？」）。
+    #
+    # ⚠ 前は両方を owners に積んで、あとで**どちらが勝つかを決めて**いた。
+    # ⚠⚠ **それが「1つのファイルを開いても何が勝つか分からない」形そのもの**だった。
+    #
+    # ⚠ いまは読む時点で1つにする——⚠ **当部の分が在れば、それが唯一の定義。**
+    # ⚠ 足し合わせる種類（タグ・訳・層）は差し替えない（`MERGERS` が合わせる）。
+    # ⚠ 差し替えた件数と、足した件数は**必ず印字する**（黙って書き換えない）。
+    global patched_paths, added_paths
+    patched_paths, added_paths = [], []
     for label, rel, blob in datapack_entries():
-        sink["entries"].setdefault(rel, []).append((label, blob))
+        cur = sink["entries"].get(rel)
+        if cur and not MERGERS.get(merge_kind_any(rel)):
+            # ⚠ 相手の定義を**置き換える**（owners は1つのまま）
+            patched_paths.append((rel, [l for l, _b in cur]))
+            sink["entries"][rel] = [(label, blob)]
+        else:
+            sink["entries"].setdefault(rel, []).append((label, blob))
+            if not cur:
+                added_paths.append(rel)
     return sink, chosen, sorted(set(dropped)), winners
 
 
@@ -1472,6 +1482,20 @@ def run(write=False):
         z.writestr("META-INF/jarjar/metadata.json", jarjar_meta(winners, metas, extra))
         print("   入れ子で入れた: 土台 %d 本 ＋ 混ぜない MOD %d 本"
               % (len(winners), len(extra)))
+    # ⚠⚠ **当部の分が相手を差し替えた件数を出す**（黙って書き換えない）。
+    if patched_paths:
+        import collections as _c2
+        by = _c2.Counter(n.split("/")[1] for n, _o in patched_paths
+                         if n.startswith("data/") and n.count("/") > 1)
+        print("   ⚠⚠ **当部の分で差し替えた**入り口: %d 件"
+              % len(patched_paths))
+        for ns, cnt in by.most_common():
+            print("      %-24s %3d 件" % (ns, cnt))
+        print("      （⚠ **競わせていない**——読む時点で1つにしている。"
+              "⚠ だから優先度も「どちらが勝つか」も要らない）")
+    if added_paths:
+        print("   ⚠ 当部が**新しく足した**入り口: %d 件（上書きではない）"
+              % len(added_paths))
     # ⚠⚠ **優先度を消した件数を出す**（黙って書き換えない）。
     if priority_stripped:
         print("   ⚠⚠ 決着後に `loading_priority` を消した: %d 件"
@@ -1701,6 +1725,30 @@ def _self_test_body():
         else:
             print("  NG 種類の見分け %s → %s" % (p, got_kind)); ng += 1
 
+    # ⚠⚠ **古くなった宣言を名指しする**（2026-09-01・依頼者の指摘のあと）。
+    #
+    #    ⚠ `DECIDED` は「ぶつかったときにどちらを採るか」の表。
+    #    ⚠⚠ **ぶつからなくなった項目が残っていると、それは嘘の記述**——
+    #    ⚠ 読む人は「まだ2つ在って、片方を選んでいる」と誤解する。
+    #    ⚠ 実際に 2026-09-01 に4件がそうなった（当部の分が差し替えるようにした日）。
+    #    ⚠ **読ませる運用は腐る**ので、機械が数える。
+    #    ⚠⚠ **本番と同じ入力で数える。** ⚠ 自己試験は既定で「配布 jar だけ」に
+    #    落としているが、⚠ **その世界では入り口の数が違う**——
+    #    ⚠ 実際に 2026-09-01 に、この見張りが**配布 jar の世界を見て2件を誤って鳴らした**。
+    was3, globals()["USE_BUILT"] = USE_BUILT, True
+    try:
+        live_sink, _lc, _ld, _lw = gather()
+    finally:
+        globals()["USE_BUILT"] = was3
+    stale = [n for n in sorted(DECIDED)
+             if len(live_sink["entries"].get(n, [])) < 2]
+    if not stale:
+        print("  ok 決めた表 %d 件は、全部いまもぶつかっている" % len(DECIDED))
+    else:
+        print("  NG ⚠⚠ **もうぶつかっていないのに残っている宣言 %d 件**: %s"
+              % (len(stale), "／".join(stale)))
+        ng += 1
+
     # ⚠ 陰性: 決めた表の宛先が、実際にその入り口を持っていること
     #
     # ⚠⚠ **建てた版にしか居ない宛先は、この試験では見えない**（2026-09-01）。
@@ -1715,14 +1763,14 @@ def _self_test_body():
         owners = [l for l, _b in sink["entries"].get(n, [])]
         if not any(l.startswith(who) for l in owners):
             if built_sink is None:
-                global USE_BUILT
-                was2, USE_BUILT = USE_BUILT, True
+                # ⚠ 同じ関数で `global` を2回宣言できないので `globals()` で書く
+                was2, globals()["USE_BUILT"] = USE_BUILT, True
                 try:
                     built_sink = gather()[0]
                 except SystemExit:
                     built_sink = {"entries": {}}
                 finally:
-                    USE_BUILT = was2
+                    globals()["USE_BUILT"] = was2
             b_owners = [l for l, _b in built_sink["entries"].get(n, [])]
             if any(l.startswith(who) for l in b_owners):
                 print("  ok 陰性 %s の宛先 %s は**建てた版に居る**"
