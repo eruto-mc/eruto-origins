@@ -139,6 +139,23 @@ java {
 }
 
 allprojects {
+	// ⚠⚠ **当部の変更（2026-09-01）: ソースの文字コードを UTF-8 と明示する。**
+	//
+	//    ⚠ **指定が無いと javac は動かしている機械の既定を使う。**
+	//    ⚠ 当部の Windows は日本語（cp932）なので、⚠⚠ **UTF-8 のソースに書いた日本語が
+	//    class の定数プールの時点で壊れる**——`\xe9\x81\x9e\xef\xbd\xae…` のように
+	//    ⚠ **cp932 でも shift_jis でも latin-1 でも戻せない形**になる（U+FFFD が混ざる）。
+	//
+	//    ⚠⚠ **実害が出た（2026-09-01）**: 当部が入れた `logPowerTally` の記録が
+	//    ⚠ **日本語で出るのに機械で引けず**、私が「0 件＝能力は全部解決できていた」と
+	//    ⚠⚠ **依頼者へ誤って報告した**（実際は 14 行鳴っており、解決できない能力が 6〜14 件）。
+	//    ⚠ **機械で引けない記録は、無いのと同じ。**
+	//
+	//    ⚠ 上流は英語しか書かないので困っていない。⚠ **日本語を書く当部だけの問題。**
+	tasks.withType(JavaCompile).configureEach {
+		options.encoding = 'UTF-8'
+	}
+
 	dependencies {
 		minecraft group: 'net.minecraftforge', name: 'forge', version: "${rootProject.minecraft_version}-${rootProject.forge_version}"
 		testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter', version: '5.6.2'
