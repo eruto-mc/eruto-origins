@@ -155,6 +155,20 @@ allprojects {
 	tasks.withType(JavaCompile).configureEach {
 		options.encoding = 'UTF-8'
 	}
+	// ⚠⚠ **資源を写すときも UTF-8 で書く**（2026-09-01）。
+	//
+	// ⚠ **なぜ要るか（実物で確かめた）**: `processResources` は `expand()` で
+	// テンプレートを展開するとき、⚠⚠ **書き出しに機械の既定の文字コードを使う**
+	// （当部の Windows は cp932）。⚠ 元のファイルは UTF-8 なのに、
+	// ⚠⚠ **jar の中の mods.toml が cp932 になっていた**
+	// （utf-8 では読めず、cp932 なら読めた）。
+	//
+	// ⚠ **Forge は mods.toml を UTF-8 として読む**ので、
+	// ⚠⚠ **日本語を1文字でも書くと壊れる。**
+	// ⚠ 当部は受け入れた shifting_origins の経緯を日本語で書いているので、必ず要る。
+	tasks.withType(ProcessResources).configureEach {
+		filteringCharset = 'UTF-8'
+	}
 
 	dependencies {
 		minecraft group: 'net.minecraftforge', name: 'forge', version: "${rootProject.minecraft_version}-${rootProject.forge_version}"
@@ -347,6 +361,20 @@ project(":origins") {
 			jarJar.pin(it, "${minecraft_version}-${apoli_version}")
 			jarJar.ranged(it, "[${minecraft_version}-${apoli_specs},)")
 		}
+
+		// ⚠⚠ **当部が受け入れた `shifting_origins` が要る依存**（2026-09-01）。
+		//    ⚠ **どれも `compileOnly`**——実行時は modpack に実物が入っている。
+		//    ⚠ 版は**実物と同じファイルID**で指す（`cursemaven`）。
+		//    ⚠ 上流を取り込むとき、ここは当部の追加分として残す。
+		compileOnly "curse.maven:origins-classes-forge-610127:4965453"
+		// ⚠ 右クリック収穫（2026-08-09 に足した）。⚠ 農家の `more_crop_drops` は
+		//    `Block#playerDestroy` 経由なので、`Block#getDrops` を直接呼ぶ
+		//    右クリック収穫では**一度も発動しなかった**。
+		compileOnly "curse.maven:harvest-with-ease-602171:5968744"
+		// ⚠ Tough As Nails（渇きの API）。⚠ **maven にしない**——
+		//    ⚠ 実物と同じ版でコンパイルしたい（渇きの値を上流の「浄水の瓶」に合わせている）。
+		//    写した元: dev/instance/mods/ToughAsNails-forge-1.20.1-9.2.0.171.jar
+		compileOnly files("${rootProject.projectDir}/libs/toughasnails.jar")
 	}
 
 	jar {
@@ -378,6 +406,10 @@ project(":origins") {
 		add sourceSets.main, 'origins.refmap.json'
 
 		config 'origins.mixins.json'
+		// ⚠⚠ **当部が受け入れた `shifting_origins` の mixin**（2026-09-01）。
+		//    ⚠ refmap は上の `origins.refmap.json` に**同居する**（1つのソースの木なので）。
+		//    ⚠ そのため `shiftingorigins.mixins.json` の `refmap` の欄も書き換えてある。
+		config 'shiftingorigins.mixins.json'
 	}
 }
 

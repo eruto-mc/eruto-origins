@@ -79,7 +79,10 @@ TOP = [
     "origins-classes-forge-",
     "Medieval Origins Revival-",
     "origins_umbrellas-",
-    "shifting_origins-",
+    # ⚠⚠ **`shifting_origins-` は 2026-09-01 に外した。**
+    #    ⚠ **origins のソースの木へ受け入れた**ので、origins が建てた jar に**もう入っている**。
+    #    ⚠ ここに残すと**同じ class を二重に入れる**ことになる。
+    #    ⚠ 依頼者の意向:「⚠ 1つの MOD に1つの実装として」。
     "orb_layer_variants-",
 ]
 
@@ -179,8 +182,12 @@ DECIDED = {
     # ⚠⚠ **ただし段4で `origins_setup` を jar へ入れるときは、200 の側を残すこと**
     #    （1つの jar に2つ置けないので、0 の側を残すと無効化ではなく**上流の定義**に戻る）。
     "data/origins-classes/powers/explorer_kit.json": (
-        "shifting_origins",
-        "⚠ ここだけ**本物の上書き**（同じ中身の組が無い）。当部の物を採る"),
+        # ⚠⚠ **2026-09-01 に宛先が変わった。** ⚠ `shifting_origins` を
+        #    **origins のソースの木へ受け入れた**ので、この JSON は
+        #    ⚠ **origins が建てた jar から出てくる**（別の jar ではなくなった）。
+        "origins-forge-",
+        "⚠ ここだけ**本物の上書き**（同じ中身の組が無い）。当部の物を採る。"
+        "⚠ 出どころは受け入れた `shifting_origins`（`hidden` の無効化版ではなく実物）"),
     # ── 段4（当部の datapack を jar へ入れる）で出たぶつかり（2026-09-01）──
     #
     # ⚠ **`loading_priority` が無い種類**なので、道具は決められない。⚠ 1件ずつ開いて決めた。
@@ -212,7 +219,10 @@ DECIDED = {
 
 # ⚠ 各 jar が「自分のもの」として書いてよい `data/<名前空間>/`。
 OWN_NS = {
-    "origins-forge-": {"origins"},
+    # ⚠⚠ **`shiftingorigins` を足した**（2026-09-01）。
+    #    ⚠ **origins のソースの木へ受け入れた**ので、origins が建てた jar が
+    #    `data/shiftingorigins/**` を持つ。⚠ **もう越境ではない**（自分の領分）。
+    "origins-forge-": {"origins", "shiftingorigins"},
     "origins-classes-forge-": {"origins-classes"},
     "Medieval Origins Revival-": {"medievalorigins"},
     "origins_umbrellas-": {"originsumbrellas"},
@@ -671,14 +681,8 @@ BUILT = {
     "origins-forge-": (os.path.join(REPO, "origins", "build", "libs"),
                        "origins-forge-", "-all.jar",
                        ["origins/src", "apoli/src", "calio/src"]),
-    # ⚠⚠ **2026-09-01 に足した。** ⚠ 当部の自作なので、⚠ **建てた版を使わないと
-    #    「mixin を畳んだ」直しが混ぜた jar に届かない**（配布 jar には古い mixin が在る）。
-    #    ⚠ 置き場は別リポジトリ（`eruto-mc/shifting_origins`）。
-    "shifting_origins-": (os.path.join(os.path.dirname(REPO), "shifting_origins",
-                                       "build", "libs"),
-                          "shifting_origins-", ".jar",
-                          [os.path.join(os.path.dirname(REPO), "shifting_origins",
-                                        "src")]),
+    # ⚠ `shifting_origins-` は 2026-09-01 に外した（`TOP` から外したのと同じ理由）。
+    #   ⚠⚠ **origins のソースの木に入った**ので、`origins/src` を見る番人がそのまま効く。
 }
 
 # ⚠ `--released` を付けると `BUILT` を使わず、配布 jar だけで混ぜる。
@@ -1090,7 +1094,14 @@ def other_mod_packages():
     #    配布 jar と一致しなくなった。** ⚠⚠ **結果、自分自身と 38 個ぶつかると出した。**
     #    ⚠ 2026-08-30 に同じ形を1度踏んでいる（前に置いた当部の jar と 82 個）。
     #    ⚠ **名前の頭で除けば、入力をどこから採っても効く。**
-    stems = tuple(TOP) + tuple(NEST_AS_IS) + ("eruto-origins-",)
+    # ⚠⚠ **`TOP` から外した物も除く**（2026-09-01）。
+    #    ⚠ `shifting_origins` は **origins のソースの木へ受け入れた**ので `TOP` から外したが、
+    #    ⚠⚠ **`instance/mods` にはまだ古い jar が残っている**（部員の構成をまだ変えていない）。
+    #    ⚠ 除かないと「他の MOD とぶつかる」と鳴るが、⚠ **置き換わった相手なので偽**。
+    #    ⚠ **本物の危険は別に在る**——その jar を残したまま配ると **modId が重複して落ちる**。
+    #    ⚠ そちらは `swap_bundle.py` が退避対象に持っている（`STEMS` に `shifting_origins-`）。
+    REPLACED = ("shifting_origins-",)
+    stems = tuple(TOP) + tuple(NEST_AS_IS) + REPLACED + ("eruto-origins-",)
     mine = {f for f in os.listdir(MODS) if f.startswith(stems)}
     out = collections.defaultdict(set)
 
@@ -1467,11 +1478,14 @@ def _self_test_body():
         print("  ok いまの構成で package のぶつかりは 0 個")
 
     # ⚠⚠ 相手の名前空間へ書いている分を見る側の対照（2026-09-01・あなたの指摘）
+    # ⚠ 2026-09-01 に 5 → 2 件へ減った。⚠⚠ **検査が緩んだのではなく、
+    #   `shifting_origins` を origins のソースの木へ受け入れたので、
+    #   ⚠ **あちらが書いていた 3 件が「自分の領分」になった**（越境ではなくなった）。
     cross = check_cross_namespace(sink0["entries"])
-    if len(cross) >= 5:
+    if len(cross) >= 2:
         print("  ok 陽性 相手の名前空間へ書いている data を %d 件つかまえた" % len(cross))
     else:
-        print("  NG 陽性 %d 件しか見えない（5 件在るはず）" % len(cross))
+        print("  NG 陽性 %d 件しか見えない（2 件在るはず）" % len(cross))
         ng += 1
     unex = [c for c in cross if c[2] is None]
     if unex:
@@ -1590,9 +1604,32 @@ def _self_test_body():
             print("  NG 種類の見分け %s → %s" % (p, got_kind)); ng += 1
 
     # ⚠ 陰性: 決めた表の宛先が、実際にその入り口を持っていること
+    #
+    # ⚠⚠ **建てた版にしか居ない宛先は、この試験では見えない**（2026-09-01）。
+    #    ⚠ 自己試験は**配布 jar だけ**で回す（上の `USE_BUILT = False`）ので、
+    #    ⚠ **当部がソースへ受け入れたばかりの物は、配布 jar にまだ入っていない。**
+    #    ⚠ `explorer_kit` が実際にそうなった——`shifting_origins` を origins の
+    #    ソースの木へ受け入れた日、⚠⚠ **配布 jar は前日の姿のまま**だった。
+    #    ⚠ **飛ばすのではなく、建てた版でもう一度引いて確かめる**（黙って通さない）。
     sink, _c, _d, _w = gather()
+    built_sink = None
     for n, (who, _why) in sorted(DECIDED.items()):
         owners = [l for l, _b in sink["entries"].get(n, [])]
+        if not any(l.startswith(who) for l in owners):
+            if built_sink is None:
+                global USE_BUILT
+                was2, USE_BUILT = USE_BUILT, True
+                try:
+                    built_sink = gather()[0]
+                except SystemExit:
+                    built_sink = {"entries": {}}
+                finally:
+                    USE_BUILT = was2
+            b_owners = [l for l, _b in built_sink["entries"].get(n, [])]
+            if any(l.startswith(who) for l in b_owners):
+                print("  ok 陰性 %s の宛先 %s は**建てた版に居る**"
+                      "（⚠ 配布 jar にはまだ無い）" % (n.split("/")[-1], who))
+                continue
         if any(l.startswith(who) for l in owners):
             print("  ok 陰性 %s の宛先 %s が居る" % (n.split("/")[-1], who))
         else:
