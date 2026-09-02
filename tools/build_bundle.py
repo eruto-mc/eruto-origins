@@ -744,6 +744,24 @@ BUILT = {
                        ["origins/src", "apoli/src", "calio/src"]),
     # ⚠ `shifting_origins-` は 2026-09-01 に外した（`TOP` から外したのと同じ理由）。
     #   ⚠⚠ **origins のソースの木に入った**ので、`origins/src` を見る番人がそのまま効く。
+    #
+    # ⚠⚠ **MOR を 2026-09-02 に足した**（段6 の1件目）。
+    #
+    # ⚠ **なぜ要るか**: 上流 6.7.x は Connector 用で当部の土台では動かないので、
+    #   ⚠ **直しは1件ずつ当部の fork（`eruto-mc/Medieval-Origins-Revival`）へ書き戻す。**
+    #   ⚠⚠ **配布 jar を混ぜている限り、その書き戻しは出荷物に入らない。**
+    #
+    # ⚠ **建てるには前提が要る**（`medieval/` の `eruto/world3-1.20.1` を見ること）:
+    #   ⚠ 依存の置き場（Greenhouse）がここから届かないので、⚠ `libs-local/m2` を作ってある。
+    #   ⚠ 建て方: `cd medieval && ./gradlew :forge:build --configure-on-demand`
+    #     （⚠ `--configure-on-demand` が要る——⚠ `:fabric` は届かない依存を持つ）。
+    #
+    # ⚠ **`-eruto1` の 8 件抜きはここでは当たらない**——`mor_drop()` が
+    #   `build_mor_patch.py` の `DROP` を読んで、混ぜる時点で落とす。
+    "Medieval Origins Revival-": (
+        os.path.join(REPO, "medieval", "forge", "build", "libs"),
+        "Medieval Origins Revival-", "-forge.jar",
+        ["medieval/common/src", "medieval/forge/src"]),
 }
 
 # ⚠ `--released` を付けると `BUILT` を使わず、配布 jar だけで混ぜる。
