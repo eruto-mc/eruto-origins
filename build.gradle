@@ -334,6 +334,16 @@ project(":origins") {
 			exclude group: 'net.minecraftforge', module: 'forge'
 		}
 
+		// ⚠ 当部の変更（2026-09-05）: `shiftingorigins` の `LavaSwimMixin` が
+		//    MixinExtras の `@WrapOperation` を使うので、⚠ **`:apoli` と同じ2行がここにも要る。**
+		//    ⚠⚠ **`@Redirect` では駄目だった**（2026-09-05 に実機で落ちた）——
+		//    `LivingEntity.travel` の `isInWater()` は**他の MOD も横取りしている**ので、
+		//    ⚠ 1命令に1つしか取れない `@Redirect` は `(0/1) succeeded` で落ち、サーバが起動しない。
+		//    ⚠ **2行そろえること。** 片方だけだと refmap に書かれず、
+		//    ⚠⚠ **起動時に「could not find any targets」で落ちる**（:apoli の注記が同じ事故を記録）。
+		compileOnly 'io.github.llamalad7:mixinextras-common:0.5.0'
+		annotationProcessor 'io.github.llamalad7:mixinextras-common:0.5.0'
+
 		// ⚠ 当部の変更（2026-09-01）: 版の**範囲**をやめ、実版＋`ranged` に書き換えた。
 		//    ⚠⚠ **Modrinth の Maven は `maven-metadata.xml` に GET は 200、HEAD は 404 を返す**
 		//    （実測。対照として `maven.minecraftforge.net` は HEAD も 200）。
