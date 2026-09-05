@@ -224,6 +224,18 @@ DECIDED = {
         "origins-forge-",
         "⚠ ここだけ**本物の上書き**（同じ中身の組が無い）。当部の物を採る。"
         "⚠ 出どころは受け入れた `shifting_origins`（`hidden` の無効化版ではなく実物）"),
+    "data/origins-classes/powers/more_planks_from_logs.json": (
+        # ⚠ 当部の側は `origins` のソースの木に在る（`shiftingorigins` を受け入れた後なので、
+        #   explorer_kit と同じく **origins が建てた jar** から出てくる）。
+        "origins-forge-",
+        "⚠⚠ **上流の定義を無害な `apoli:simple` で上書きしている**（2026-09-05）。"
+        "⚠ 上流は `apoli:modify_crafting` で、その `ModifiedCraftingRecipe` は "
+        "`TransientCraftingContainer` でなければ何もしない。⚠ **Visual Workbench が作業台の器を "
+        "`ForwardingCraftingContainer` に差し替えている**ので、作業台では1枚も増えていなかった"
+        "（部員からの報告で判明。実物の class をバイト列で確認）。"
+        "⚠ 増量は当部の `CraftingResultMixin` が受け持つ——"
+        "⚠⚠ **上流を残すと、持ち物の 2×2 では上流が6枚にした上へ当部が2枚足して8枚になりうる。**"
+        "⚠ `hidden` は立てない（能力の一覧と日本語の説明はこれまでどおり出す）"),
     # ── 段4 で出たぶつかりのうち、⚠⚠ **まだ人が決める必要が在るもの**（2026-09-01）──
     #
     # ⚠ 当部の分が相手を**差し替える**ようになった日（2026-09-01）に、
@@ -281,6 +293,12 @@ CROSS_NS_OK = {
     "data/forge/tags/damage_types/is_magic.json":
         "⚠ Forge の共有タグ。⚠ **タグは上書きではなく足し合わせ**なので、"
         "他の MOD の分を消さない（追いかけが要らない）",
+    "data/origins-classes/powers/more_planks_from_logs.json":
+        "⚠ `origins` の側（受け入れた `shifting_origins`）が `origins-classes` の能力を"
+        "上書きしている（優先度100・`apoli:simple`＝当部で無害化した版）。"
+        "⚠⚠ **能力そのものは残す**（一覧と日本語の説明が消えると、部員には"
+        "「能力ごと取り上げられた」ように見えるため）。"
+        "⚠ 実際の増量は `net.erutobusiness.shiftingorigins.LumberjackPlanks` が受け持つ",
 }
 
 # ⚠⚠ **訳の鍵が2つの名前空間にまたがっているとき、どちらを正とするか**（2026-09-01 新設）。
