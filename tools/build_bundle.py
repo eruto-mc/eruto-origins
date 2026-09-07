@@ -236,6 +236,17 @@ DECIDED = {
         "⚠ 増量は当部の `CraftingResultMixin` が受け持つ——"
         "⚠⚠ **上流を残すと、持ち物の 2×2 では上流が6枚にした上へ当部が2枚足して8枚になりうる。**"
         "⚠ `hidden` は立てない（能力の一覧と日本語の説明はこれまでどおり出す）"),
+    "data/origins-classes/powers/trade_availability.json": (
+        # ⚠ 当部の側は `origins` のソースの木（`shiftingorigins`）に在る。
+        "origins-forge-",
+        "⚠⚠ **上流の定義を無害な `apoli:simple` で上書きしている**（2026-09-07）。"
+        "⚠ 上流は `origins_classes:infinite_trade`＝中身の無い power で、働いているのは "
+        "`AbstractVillagerMixin` が `notifyTrade` の末尾で `--offer.uses` すること"
+        "（＝**絶対に減らない**）。⚠⚠ **あなたの判断（2026-09-07）で「確率で減らない」へ変えた。**"
+        "⚠ 減らさない確率は `net.erutobusiness.shiftingorigins.MerchantStock` が受け持ち、"
+        "設定は `shiftingorigins-server.toml` の `merchant.stockKeptChance`（既定 0.5）。"
+        "⚠⚠ **上流を残すと、あちらが先に全部戻すので確率にならない。**"
+        "⚠ `hidden` は立てない（能力の一覧と日本語の説明はこれまでどおり出す）"),
     # ── 段4 で出たぶつかりのうち、⚠⚠ **まだ人が決める必要が在るもの**（2026-09-01）──
     #
     # ⚠ 当部の分が相手を**差し替える**ようになった日（2026-09-01）に、
@@ -299,6 +310,12 @@ CROSS_NS_OK = {
         "⚠⚠ **能力そのものは残す**（一覧と日本語の説明が消えると、部員には"
         "「能力ごと取り上げられた」ように見えるため）。"
         "⚠ 実際の増量は `net.erutobusiness.shiftingorigins.LumberjackPlanks` が受け持つ",
+    "data/origins-classes/powers/trade_availability.json":
+        "⚠ `origins` の側（受け入れた `shifting_origins`）が `origins-classes` の能力を"
+        "上書きしている（優先度100・`apoli:simple`＝当部で無害化した版）。"
+        "⚠⚠ **能力そのものは残す**（`more_planks_from_logs` と同じ理由）。"
+        "⚠ 在庫が確率で減らないのは "
+        "`net.erutobusiness.shiftingorigins.MerchantStock` が受け持つ",
 }
 
 # ⚠⚠ **訳の鍵が2つの名前空間にまたがっているとき、どちらを正とするか**（2026-09-01 新設）。
