@@ -788,8 +788,15 @@ BUILT = {
     #
     # ⚠ **建てるには前提が要る**（`medieval/` の `eruto/world3-1.20.1` を見ること）:
     #   ⚠ 依存の置き場（Greenhouse）がここから届かないので、⚠ `libs-local/m2` を作ってある。
-    #   ⚠ 建て方: `cd medieval && ./gradlew :forge:build --configure-on-demand`
-    #     （⚠ `--configure-on-demand` が要る——⚠ `:fabric` は届かない依存を持つ）。
+    #   ⚠ 建て方: `cd medieval && ./gradlew :forge:build`
+    #     ⚠⚠ **2026-09-08 に `settings.gradle` から fabric を外したので、
+    #     `--configure-on-demand` は要らなくなった**（それまでは要った）。
+    #     ⚠ 外した理由: gradle は**設定の段階で**全プロジェクトを読むため、
+    #       ⚠ 当部が建てない fabric の依存（REI・Apugli）が取れないと `:forge:build` まで落ちる。
+    #       ⚠ REI は `repo.greenhouse.house` → `maven.greenhouse.lgbt` が時間切れ、
+    #       ⚠ Apugli は `maven.merchantpug.net` が**名前解決できない**（2026-09-08 の実測）。
+    #     ⚠⚠ **注記に書いて人が打つ形は腐った**——⚠ 2026-09-08 に Claude が
+    #       **この行を読まずに 3 回落ちた**。当部の決まり「機械にできるなら機械にする」に寄せた。
     #
     # ⚠ **`-eruto1` の 8 件抜きはここでは当たらない**——`mor_drop()` が
     #   `build_mor_patch.py` の `DROP` を読んで、混ぜる時点で落とす。
