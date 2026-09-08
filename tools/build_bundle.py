@@ -797,6 +797,23 @@ BUILT = {
         os.path.join(REPO, "medieval", "forge", "build", "libs"),
         "Medieval Origins Revival-", "-forge.jar",
         ["medieval/common/src", "medieval/forge/src"]),
+
+    # ⚠⚠ **`origins-classes` を 2026-09-08 に足した。**
+    #
+    # ⚠ **なぜ要るか**: ソースは在るのに建てていなかったので、
+    #   ⚠⚠ **power を直す口が datapack の上書きしか無かった**
+    #   （その写しは `_resolve_power()` が先に読むため、MOD 側を直しても届かない）。
+    #   ⚠ 同じ形の上書きが `origins-classes` に 6 件在る（調教師のペット強化ほか）。
+    #
+    # ⚠ **建て方**: `./gradlew :origins-classes:build`（ルートのサブプロジェクトにした）。
+    #   ⚠ 名前が `origins-classes-forge-1.2.1` → **`-1.20.1-1.2.1`** に変わる
+    #     （ルートの `subprojects` が `<MC版>-<MOD版>` を付けるため）。
+    #   ⚠ 配布 jar との差は **javac の版で説明が付く class 2 件と、改行だけの 88 件**
+    #     （2026-09-08 に突き合わせた）。
+    "origins-classes-forge-": (
+        os.path.join(REPO, "origins-classes", "build", "libs"),
+        "origins-classes-forge-", ".jar",
+        ["origins-classes/src"]),
 }
 
 # ⚠ `--released` を付けると `BUILT` を使わず、配布 jar だけで混ぜる。

@@ -26,3 +26,10 @@ rootProject.name = 'Origins'
 include 'calio'
 include 'apoli'
 include 'origins'
+
+// ⚠⚠ **当部が足した（2026-09-08）。`origins-classes` をソースから建てるため。**
+// ⚠ それまで `build_bundle.py` は**退避先の配布 jar** を採っており、
+//   ⚠⚠ **power を直す口が datapack の上書きしか無かった**
+//   （その写しは `_resolve_power()` が先に読むので、MOD 側を直しても届かない）。
+// ⚠ `origins-classes/build.gradle` は消した——ルートの `subprojects { }` が見るため。
+include 'origins-classes'
