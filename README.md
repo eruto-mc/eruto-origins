@@ -38,14 +38,29 @@
 > ### 建て方と確かめ方
 >
 > ```text
-> JAVA_HOME=<17以上> ./gradlew build
-> py -3.12 tools/compare_with_released.py
+> JAVA_HOME=<17以上> ./gradlew build                  # calio / apoli / origins
+> JAVA_HOME=<17以上> medieval/gradlew :forge:build    # ⚠ medieval は別のプロジェクト
+> py -3.12 tools/build_bundle.py --write              # 7本を1つに混ぜる
+> py -3.12 tools/check_bundle_parity.py               # 混ぜる前と後で名乗りが同じか
+> py -3.12 tools/check_refmap_coverage.py             # 注釈が要求する参照が refmap に在るか
+> py -3.12 tools/check_merge_hazards.py               # 混ぜて黙って壊れる所
 > ```
 >
-> ⚠ **`gradlew build` が通っただけでは足りない。** 必ず後者を回す——
-> 配布された物との差を出し、**javac の版で説明が付く差だけか**を判定する
-> （終了コード 0 が正）。⚠ **陰性対照も取ってある**: 当部のパッチ版 jar を
-> `--built` に渡すと、差し替えた5つの mixin と refmap を名指しして落ちる。
+> ⚠⚠ **`medieval` は自分の `settings.gradle` を持つ別のプロジェクト**なので、
+> ルートの `gradlew build` では建たない。⚠ 忘れても `build_bundle.py` が
+> 「建てた jar がソースより古い」で止める（2026-09-08 に実際そこで気づいた）。
+> ⚠ **fabric は建てる対象から外してある**（2026-09-08。理由は `medieval/settings.gradle` の注記）。
+>
+> ⚠⚠ **`compare_with_released.py` と `check_source_vs_released.py` は、いまは回さない**（2026-09-08）。
+> ⚠ **どちらも「混ぜた jar」への移行（2026-08-30〜09-02）に追随していない**:
+>
+> | 道具 | 比べている相手 | いま回すとどうなるか |
+> | - | - | - |
+> | `compare_with_released.py` | 配布された素の Origins（＝段1の形） | ⚠ 受け入れた `shifting_origins` が**全部「説明の付かない差」になる**（92 件） |
+> | `check_source_vs_released.py` | ⚠ **退避済みの単体 jar**（`MOR-…-eruto1.jar`。混ぜた jar の中は見ない） | ⚠ 2026-09-02 に消した `temp_dashup_particles*` が出る＝**その時から落ちていた** |
+>
+> ⚠ **道具は消していない**（比べる相手を混ぜた jar の中身へ向け直せば戻せる）。
+> ⚠ **段1・段2 の判定に使った記録は、上の段の表がそのまま残る。**
 
 # Origins (Forge)
 

@@ -1,6 +1,13 @@
 # -*- coding: utf-8 -*-
 """置いてある**ソース**と、いま配っている **jar** の中身を突き合わせる。
 
+⚠⚠ **2026-09-08 から、この道具は建て方の手順に入っていない**（README の「建て方と確かめ方」）。
+⚠ 「いま配っている jar」として ⚠ **退避済みの単体 jar**（`MOR-…-eruto1.jar` など）を
+  採ってしまう——⚠ **混ぜた jar の中は見ない**。
+  ⚠⚠ **2026-09-02 に消した `temp_dashup_particles*` が出る＝その時から落ちていた**
+  （気づいたのは 2026-09-08）。
+⚠ **消していない。** 比べる相手を混ぜた jar の中身へ向け直せば戻せる。
+
   py -3.12 tools/check_source_vs_released.py
   py -3.12 tools/check_source_vs_released.py --detail
   py -3.12 tools/check_source_vs_released.py --self-test
