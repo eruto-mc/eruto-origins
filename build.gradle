@@ -389,6 +389,20 @@ project(":origins") {
 		//    ⚠ 実物と同じ版でコンパイルしたい（渇きの値を上流の「浄水の瓶」に合わせている）。
 		//    写した元: dev/instance/mods/ToughAsNails-forge-1.20.1-9.2.0.171.jar
 		compileOnly files("${rootProject.projectDir}/libs/toughasnails.jar")
+		// ⚠⚠ **Easy Magic（2026-09-09 に足した）。** 司書の「予告がすべて読める」のため。
+		//    ⚠ この構成のエンチャントテーブルは Easy Magic が差し替えており、
+		//    ⚠⚠ **予告を描いているのは向こうの画面**（`ModEnchantmentScreen`）。
+		//    ⚠ バニラの欄に書いても向こうの一覧には1行も出ないので、ここだけ名指しする。
+		//    ⚠ 抜いた日に落ちないよう、`ShiftingOriginsMixinPlugin` が
+		//    ⚠ **読み込まれているときだけ**当てる。
+		//    ⚠ 版は**実物と同じファイル名**で指す（`EasyMagic-v8.0.1-1.20.1-Forge.jar`）。
+		compileOnly "maven.modrinth:easy-magic:v8.0.1-1.20.1-Forge"
+		// ⚠⚠ **土台の Puzzles Lib も要る。** Easy Magic の `ServerConfig` が
+		//    `fuzs.puzzleslib.api.config.v3.ConfigCore` を実装しており、
+		//    ⚠ **その中の enum を1つ読むだけでも javac が親の型を探しにいく**
+		//    （無いと `ConfigCore にアクセスできません` で落ちる・2026-09-09 に実測）。
+		//    ⚠ 版は実物と同じ（`PuzzlesLib-v8.1.33-1.20.1-Forge.jar`）。
+		compileOnly "maven.modrinth:puzzles-lib:v8.1.33-1.20.1-Forge"
 	}
 
 	jar {
