@@ -217,18 +217,20 @@ DECIDED = {
     # ⚠ いまも（0/100/200 のうち）200 が勝っており、100 を落としても 200 が勝つ。
     # ⚠⚠ **ただし段4で `origins_setup` を jar へ入れるときは、200 の側を残すこと**
     #    （1つの jar に2つ置けないので、0 の側を残すと無効化ではなく**上流の定義**に戻る）。
-    "data/origins-classes/powers/explorer_kit.json": (
-        # ⚠⚠ **2026-09-01 に宛先が変わった。** ⚠ `shifting_origins` を
-        #    **origins のソースの木へ受け入れた**ので、この JSON は
-        #    ⚠ **origins が建てた jar から出てくる**（別の jar ではなくなった）。
-        "origins-forge-",
-        "⚠ ここだけ**本物の上書き**（同じ中身の組が無い）。当部の物を採る。"
-        "⚠ 出どころは受け入れた `shifting_origins`（`hidden` の無効化版ではなく実物）"),
+    # ⚠⚠ **`data/origins-classes/powers/explorer_kit.json` は 2026-09-09 に消した。**
+    #    ⚠ 当部の写しは「上流の開始装備を殺すための無害な写し」で、
+    #    ⚠⚠ **同じ日に探索者の一覧から `origins-classes:explorer_kit` を外した**ので、
+    #      押さえる相手が居なくなった（上流の定義は jar に残るが、誰にも配られない）。
+    #    ⚠ **ぶつからなくなったので、ここに書いてあると嘘になる**
+    #      （`check_decided_live()` が名指しする）。
     "data/origins-classes/powers/more_planks_from_logs.json": (
         # ⚠ 当部の側は `origins` のソースの木に在る（`shiftingorigins` を受け入れた後なので、
         #   explorer_kit と同じく **origins が建てた jar** から出てくる）。
         "origins-forge-",
-        "⚠⚠ **上流の定義を無害な `apoli:simple` で上書きしている**（2026-09-05）。"
+        "⚠⚠ **上流の定義を無害な印で上書きしている**（2026-09-05。"
+        "⚠ 型は 2026-09-09 に `apoli:simple` → `shiftingorigins:extra_planks` へ替えた。"
+        "中身は同じ `DummyPower` で挙動は変わらない。⚠ **機械が「印」と「残骸」を"
+        "見分けられるようにするため**）。"
         "⚠ 上流は `apoli:modify_crafting` で、その `ModifiedCraftingRecipe` は "
         "`TransientCraftingContainer` でなければ何もしない。⚠ **Visual Workbench が作業台の器を "
         "`ForwardingCraftingContainer` に差し替えている**ので、作業台では1枚も増えていなかった"
@@ -239,7 +241,8 @@ DECIDED = {
     "data/origins-classes/powers/trade_availability.json": (
         # ⚠ 当部の側は `origins` のソースの木（`shiftingorigins`）に在る。
         "origins-forge-",
-        "⚠⚠ **上流の定義を無害な `apoli:simple` で上書きしている**（2026-09-07）。"
+        "⚠⚠ **上流の定義を無害な印で上書きしている**（2026-09-07。"
+        "⚠ 型は 2026-09-09 に `apoli:simple` → `shiftingorigins:merchant_stock` へ替えた）。"
         "⚠ 上流は `origins_classes:infinite_trade`＝中身の無い power で、働いているのは "
         "`AbstractVillagerMixin` が `notifyTrade` の末尾で `--offer.uses` すること"
         "（＝**絶対に減らない**）。⚠⚠ **あなたの判断（2026-09-07）で「確率で減らない」へ変えた。**"
