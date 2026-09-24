@@ -9,8 +9,8 @@
 > 第3ワールドの Origins まわりが **jar 8本・datapack 2つ・リソースパック・config** に
 > 散っており、同じ id を2か所が別々に定義している件が5件（中身は5件とも違う）在った。
 > ⚠ 上流の `origins-forge` は **2024-05-04 の 1.10.0.9 で止まっている**ので、
-> 直すには当部がソースを持つしかない。設計は `minecraft-club` の
-> `worlds/world-3/selection/design/origins-consolidation.md`。
+> 直すには当部がソースを持つしかない。設計は当部の手元の設計文書
+> （`origins-consolidation.md`。公開していない）。
 >
 > ### いまどこまで来ているか（段2まで済み）
 >
@@ -43,8 +43,13 @@
 > py -3.12 tools/build_bundle.py --write              # 7本を1つに混ぜる
 > py -3.12 tools/check_bundle_parity.py               # 混ぜる前と後で名乗りが同じか
 > py -3.12 tools/check_refmap_coverage.py             # 注釈が要求する参照が refmap に在るか
-> py -3.12 tools/check_merge_hazards.py               # 混ぜて黙って壊れる所
 > ```
+>
+> ⚠ **`check_merge_hazards.py` は 2026-09-25 に外した。** 1本に混ぜる前の下調べの道具で、
+> 混ぜる前の jar が `mods` から消えた後は何も比べずに「0件」と出していた。
+> ⚠ その役目は `build_bundle.py`（決めていないぶつかりが在れば作らない）と
+> `check_bundle_parity.py`（混ぜて落ちた入り口が無いか数える）が持っている。
+> ぶつかりの中身を並べるのは `tools/show_collision.py <パス>`（`build_bundle.py` と同じ材料を読む）。
 >
 > ⚠⚠ **`medieval` は自分の `settings.gradle` を持つ別のプロジェクト**なので、
 > ルートの `gradlew build` では建たない。⚠ 忘れても `build_bundle.py` が

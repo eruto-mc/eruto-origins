@@ -24,8 +24,10 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 SP = (r"C:\Users\darks\AppData\Local\Temp\claude\c---projects"
       r"\1bd1f62f-c5f0-4841-9273-694275416aea\scratchpad")
-BUILT = (r"c:\@projects\minecraft-club\eruto-mc\eruto-origins"
-         r"\origins\build\libs\origins-forge-1.20.1-1.10.0.9-all.jar")
+# ⚠ この置き場（eruto-origins）の中の jar なので、自分の場所から求める
+#   （公開の置き場なので手元の絶対パスを書かない・2026-09-25）。
+BUILT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                     "origins", "build", "libs", "origins-forge-1.20.1-1.10.0.9-all.jar")
 RELEASED = os.path.join(SP, "origins-forge-1.20.1-1.10.0.9-all.jar")
 FF = (r"C:\Users\darks\.gradle\caches\forge_gradle\maven_downloader"
       r"\net\minecraftforge\forgeflower\2.0.629.0\forgeflower-2.0.629.0.jar")

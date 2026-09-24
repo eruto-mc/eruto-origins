@@ -1,55 +1,40 @@
 # -*- coding: utf-8 -*-
 """ぶつかっている data のパスについて、**持ち主全員の中身を並べる**。
 
-⚠⚠ **なぜ要るか**: `check_merge_hazards.py` は「同じ名前が2つ以上ある」までしか言わない。
-⚠ **その先（何が壊れるか・どれを残すか）は実物を開かないと決まらない**——
-2026-08-30 に、開かずに結論を書いて外した（`data/origins/origin_layers/origin.json`）。
+⚠⚠ **なぜ要るか**: `build_bundle.py` は「決めていないぶつかり」で止まるとき、
+パスと持ち主の名前までしか言わない。⚠ **その先（何が壊れるか・どれを残すか）は
+実物を開かないと決まらない**——2026-08-30 に、開かずに結論を書いて外した
+（`data/origins/origin_layers/origin.json`）。
 
-⚠ **開く先は jar だけではない。** 当部の datapack が同じパスを持っていることがあり、
-⚠⚠ **そちらが `loading_priority` で勝っている**場合がある。この道具は両方を並べる。
+⚠⚠ **読む材料は `build_bundle.py` と同じ**（2026-09-25 に向け直した）。
+それまでは `instance/mods` の jar と古い置き場の datapack を見ていたので、
+⚠ 1本に混ぜた後（2026-09-01〜）は**混ぜた jar しか見えず、上流の持ち主を並べられなかった**。
+⚠ 上流の中身は、当部の分で差し替える**前**（`build_bundle.gather_upstream()`）から取る。
 
     py -3.12 tools/show_collision.py data/origins/powers/light_armor.json
 
-⚠ 出るもの: 持ち主ごとの中身と `loading_priority`、そして
-⚠ **「上流と同じ内容の写しが在るか」**（在れば、その写しは消せる）。
+⚠ 出るもの: 持ち主ごとの中身と、⚠ **中身が同じ組**（当部の分が上流と同じ中身なら、当部の分は要らない）。
+⚠ どれが勝つかは `build_bundle.py` の決まりどおり: ⚠ **当部の分（`datapack:`）が在れば、それが勝つ**
+（足し合わせる種類＝タグ・訳・層は合わせる）。
 """
 import json
 import os
 import sys
-import zipfile
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-MC = r"c:\@projects\minecraft-club"
-MODS = os.path.join(MC, "worlds", "world-3", "dev", "instance", "mods")
-DATAPACKS = os.path.join(MC, "worlds", "world-3", "datapacks")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import build_bundle as BB  # noqa: E402  ⚠ 材料の探し方はあちらが正
 
 
-def from_jars(path):
-    """`mods/` の jar のうち、そのパスを持っているものを全部返す。"""
-    out = []
-    for name in sorted(os.listdir(MODS)):
-        if not name.endswith(".jar"):
-            continue
-        try:
-            with zipfile.ZipFile(os.path.join(MODS, name)) as zf:
-                if path in zf.namelist():
-                    out.append((name, zf.read(path).decode("utf-8", "replace")))
-        except Exception:
-            continue
-    return out
-
-
-def from_datapacks(path):
-    """当部の datapack の `src/` のうち、そのパスを持っているものを全部返す。"""
-    out = []
-    if not os.path.isdir(DATAPACKS):
-        return out
-    for name in sorted(os.listdir(DATAPACKS)):
-        f = os.path.join(DATAPACKS, name, "src", path.replace("/", os.sep))
-        if os.path.isfile(f):
-            with open(f, encoding="utf-8", errors="replace") as fh:
-                out.append(("datapack:" + name, fh.read()))
+def owners_of(path):
+    """そのパスの持ち主を (名前, 中身) で全部返す。上流（7本と溶かす土台）→ 当部の分 の順。"""
+    sink = BB.gather_upstream()[0]
+    out = [(label, blob.decode("utf-8", "replace"))
+           for label, blob in sink["entries"].get(path, [])]
+    for label, rel, blob in BB.datapack_entries():
+        if rel == path:
+            out.append((label, blob.decode("utf-8", "replace")))
     return out
 
 
@@ -68,7 +53,7 @@ def main():
         raise SystemExit("使い方: show_collision.py <data/... のパス>")
     path = sys.argv[1].replace("\\", "/")
 
-    owners = from_jars(path) + from_datapacks(path)
+    owners = owners_of(path)
     print("パス: %s" % path)
     print("持ち主: %d" % len(owners))
     print()
@@ -87,7 +72,7 @@ def main():
     # ⚠⚠ **どれが「上流」かを道具が推測しない**（2026-08-30 に `-eruto` を除外して
     #    空になった。当部がパッチした jar も、このパスについては上流の中身を持っている）。
     #    ⚠ **全部の組を突き合わせて、同じ中身のものを名指しするだけにする。**
-    #    ⚠ どれを残すかは人が決める——ただし「同じ中身が2つある」なら**片方は消せる**。
+    #    ⚠ どれを残すかは人が決める——ただし当部の分が上流と同じ中身なら**当部の分は要らない**。
     print("=== 中身が同じ組（⚠ 表示のための鍵と loading_priority を除いて比べる） ===")
 
     def core(d):
@@ -105,10 +90,9 @@ def main():
             if ca is not None and ca == cb:
                 same += 1
                 print("  ⚠⚠ **%s** と **%s** は中身が同じ" % (a, b))
-                pa = (parsed[a] or {}).get("loading_priority", 0)
-                pb = (parsed[b] or {}).get("loading_priority", 0)
-                print("      loading_priority: %s ／ %s → ⚠ **大きいほうが勝つ**"
-                      "。⚠ **負けるほうは消せる**" % (pa, pb))
+                if a.startswith("datapack:") or b.startswith("datapack:"):
+                    print("      ⚠ **当部の分が上流と同じ中身なので、当部の分は要らない**"
+                          "（消しても混ぜた jar の中身は変わらない）")
     if not same:
         print("  （同じ中身の組は無い。⚠ **全部が別物なので、1つを選ぶ判断が要る**）")
     print()

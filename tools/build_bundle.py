@@ -73,7 +73,11 @@ sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
-MC = r"c:\@projects\minecraft-club"
+# ⚠ 当部の手元のフォルダ。⚠ **作者の手元の置き方を前提にしている**——この置き場は
+#   当部のフォルダの `eruto-mc/eruto-origins` に在るので、2つ上がそのフォルダになる。
+#   ⚠ 置き方が違うなら、環境変数 `ERUTO_CLUB_DIR` にそのフォルダを入れて読み替える。
+#   ⚠ 公開している置き場なので、手元の絶対パス（非公開のフォルダ名を含む）を書かない（2026-09-25）。
+MC = os.environ.get("ERUTO_CLUB_DIR") or os.path.abspath(os.path.join(REPO, "..", ".."))
 MODS = os.path.join(MC, "worlds", "world-3", "dev", "instance", "mods")
 MOR_PATCH = os.path.join(MC, "worlds", "world-3", "dev", "work", "mor_patch",
                          "build_mor_patch.py")
@@ -1061,8 +1065,13 @@ def find_nested():
     return chosen, dropped, winners, melted
 
 
-def gather():
-    """全部の入り口を1段に引き上げて集める。返り値は sink と、採った土台の一覧。"""
+def gather_upstream():
+    """上の 7 本と溶かす土台の入り口を集める（⚠ **当部の分はまだ入れない**）。
+
+    ⚠ `tools/show_collision.py` がこれを読む——当部の分で差し替える**前の**持ち主を並べるため
+    （差し替えた後の `gather()` の結果には、上流の中身が残らない）。
+    返り値は sink と、`find_nested()` の4つ（採った土台・落とした土台・勝った版・溶かす物）。
+    """
     chosen, dropped, winners, melted = find_nested()
 
     # 第3段: 上の 7 本の中身だけ集める。
@@ -1082,6 +1091,12 @@ def gather():
         collect(p, os.path.basename(p), sink)
     for name, raw, _src in melted:
         collect(raw, name, sink)
+    return sink, chosen, dropped, winners, melted
+
+
+def gather():
+    """全部の入り口を1段に引き上げて集める。返り値は sink と、採った土台の一覧。"""
+    sink, chosen, dropped, winners, melted = gather_upstream()
     # ⚠⚠ **段4: 当部の分を入れる**（2026-09-01）。
     #
     # ⚠⚠ **競わせない。同じパスが在れば「差し替える」**（2026-09-01・依頼者の指摘

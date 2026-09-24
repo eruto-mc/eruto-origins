@@ -7,7 +7,7 @@
   ⚠ **全部「説明の付かない差」になる**（2026-09-08 の実測で 92 件）。
 ⚠ **消していない。** 比べる相手を混ぜた jar の中身（`build_bundle.py` に聞く）へ
   向け直せば戻せる。⚠ いま回すのは `check_bundle_parity.py` ／
-  `check_refmap_coverage.py` ／ `check_merge_hazards.py` の3本。
+  `check_refmap_coverage.py` の2本（`check_merge_hazards.py` は 2026-09-25 に外した）。
 ⚠ **陰性対照は取ってあった**（README から移した。2026-09-08）: 当部のパッチ版 jar を
   `--built` に渡すと、差し替えた5つの mixin と refmap を名指しして落ちる。
 

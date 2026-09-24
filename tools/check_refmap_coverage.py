@@ -55,7 +55,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 SRC = os.path.join(REPO, "apoli", "src", "main", "java")
 BUILT = os.path.join(REPO, "apoli", "build", "libs")
-MODS = r"c:\@projects\minecraft-club\worlds\world-3\dev\instance\mods"
+# ⚠ 当部の手元のフォルダは `build_bundle.py` と同じ求め方（作者の手元の置き方が前提・
+#   違うなら環境変数 `ERUTO_CLUB_DIR` で読み替える）。⚠ 公開の置き場なので手元の絶対パスを書かない。
+MODS = os.path.join(os.environ.get("ERUTO_CLUB_DIR") or os.path.abspath(os.path.join(REPO, "..", "..")),
+                    "worlds", "world-3", "dev", "instance", "mods")
 RELEASED = os.path.join(MODS, "origins-forge-1.20.1-1.10.0.9-all-eruto1.jar")
 
 # ⚠ MixinExtras の注入注釈。⚠ **Mixin 本体はこれらを知らない**ので、
