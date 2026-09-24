@@ -105,9 +105,11 @@ TOP = [
 # ⚠ 選ぶ種類は `DECIDED` が理由を要求する。⚠ **どちらでもない物が在れば作れない。**
 #
 # ⚠ **`--no-datapacks` で外せる**（段4 の前後を比べるため）。
+# ⚠ 置き場は 2026-09-18 に `worlds/world-3/dev/` の中へ移った。
+#   ⚠ 古い場所を指したままだと「datapack の置き場が無い」で建てる前に止まる。
 DATAPACKS = [
-    os.path.join(MC, "worlds", "world-3", "datapacks", "origins_setup", "src"),
-    os.path.join(MC, "worlds", "world-3", "datapacks", "origins_diet", "src"),
+    os.path.join(MC, "worlds", "world-3", "dev", "datapacks", "origins_setup", "src"),
+    os.path.join(MC, "worlds", "world-3", "dev", "datapacks", "origins_diet", "src"),
 ]
 USE_DATAPACKS = True
 
@@ -2000,7 +2002,7 @@ def _self_test_body():
     # ⚠⚠ **合成の対照**（2026-09-01）。⚠ **段4で本当にぶつかるファイルで試す。**
     #    ⚠ 作り物ではなく、`origins_diet` と混ぜた jar の実物を使う——
     #    ⚠ **段4に入った瞬間これが起きる**ので、その前に効くことを見ておく。
-    W3 = os.path.join(MC, "worlds", "world-3")
+    W3 = os.path.join(MC, "worlds", "world-3", "dev")
     dp_meat = os.path.join(W3, "datapacks", "origins_diet", "src", "data",
                            "origins", "tags", "items", "meat.json")
     jar_meat = None
