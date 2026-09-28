@@ -1,7 +1,7 @@
 [submodule "calio"]
 	path = calio
-	url = https://github.com/EdwinMindcraft/calio.git
-	branch = 1.20.x/forge
+	url = https://github.com/eruto-mc/calio.git
+	branch = eruto/world3-1.20.1
 [submodule "apoli"]
 	path = apoli
 	url = https://github.com/eruto-mc/apoli.git

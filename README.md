@@ -25,6 +25,10 @@
 > ⚠ 当部の枝 `feat/wrapoperation-render-compat` には**上流の未リリース修正 #402 が混ざっていた**ので、
 > **手術だけを取り出した枝 `eruto/world3-1.20.1`** を作ってそちらを指している。
 >
+> submodule `calio` も当部の fork（[eruto-mc/calio](https://github.com/eruto-mc/calio) の枝 `eruto/world3-1.20.1`）へ向けた（2026-09-29）。
+> ログインで登録データを受け取るとき、Netty のスレッドとメインスレッドが同じ表へ鍵なしで書き、
+> およそ 100 回に 1 回 `UnitListCodec` の NullPointerException で入れなかったのを直すため（中身は calio の `93d80b3`）。
+>
 > ### 上流の枝先に在る、jar になっていない修正3件
 >
 > ⚠ **段6（上流からの取り込み）で見る。いまは入れていない。**
