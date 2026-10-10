@@ -787,7 +787,7 @@ BUILT = {
                        "origins-forge-", "-all.jar",
                        ["origins/src", "apoli/src", "calio/src"]),
     # ⚠ `shifting_origins-` は 2026-09-01 に外した（`TOP` から外したのと同じ理由）。
-    #   ⚠⚠ **origins のソースの木に入った**ので、`origins/src` を見る番人がそのまま効く。
+    #   ⚠⚠ **origins のソースの木に入った**ので、`origins/src` を見るフックがそのまま効く。
     #
     # ⚠⚠ **MOR を 2026-09-02 に足した**（段6 の1件目）。
     #
@@ -1878,7 +1878,7 @@ def _self_test_body():
             print("  NG 陰性 %s が mixin の設定に無い（黙って死ぬ形）" % want_cfg); ng += 1
 
     # ⚠⚠ **陽性: `mixinextras` を溶かすと本当にぶつかる**（2026-08-30 に落ちた形の再現）。
-    #    ⚠ **ここが 0 個のままなら、この番人は何も見ていない。**
+    #    ⚠ **ここが 0 個のままなら、このフックは何も見ていない。**
     keep_d = dict(DISSOLVE)
     DISSOLVE["mixinextras-forge"] = "（自己試験）⚠ 対照のためだけに足す"
     try:
@@ -1891,7 +1891,7 @@ def _self_test_body():
         print("  ok 陽性 `mixinextras` を溶かすと package が %d 個ぶつかる"
               "（2026-08-30 に落ちた形）" % len(clash_bad))
     else:
-        print("  NG 陽性 `mixinextras` を溶かしてもぶつからない（番人が見ていない）")
+        print("  NG 陽性 `mixinextras` を溶かしてもぶつからない（フックが見ていない）")
         ng += 1
 
     # ⚠ 陽性: **表に書いたのに入れ子で見つからない**なら落ちること（表の腐り止め）
