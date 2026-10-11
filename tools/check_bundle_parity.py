@@ -23,7 +23,7 @@
 ⚠ そして `build_bundle.py` に足した検査（`check_mergeable` / `check_packages` /
 `NEST_AS_IS`）も**全部その型**。⚠⚠ **「起動して、動いて、値だけが違う」型の検査が 1 つも無かった。**
 
-⚠ 実例（この道具が最初に捕まえたもの）: ⚠⚠ **`originsumbrellas` と `shiftingorigins` の
+⚠ 実例（このツールが最初に捕まえたもの）: ⚠⚠ **`originsumbrellas` と `shiftingorigins` の
 版が `0.0NONE` になっていた。** 遊び用サーバは何事も無く動き、ログの 1 行だけが違った。
 
   * この 2 本だけが `mods.toml` に `version="${file.jarVersion}"` と書いている
@@ -41,7 +41,7 @@
   ④ mixin の設定    … 元の `*.mixins.json` が全部登録されているか
                        （MANIFEST の `MixinConfigs` か `[[mods]]` 側の `[[mixins]]`）
 
-## ⚠ この道具が見ないもの（**わざと**）
+## ⚠ このツールが見ないもの（**わざと**）
 
 ⚠⚠ **値の中身は見ない。** タグ・層・lang は「同じパスが在る」だけでは足りず、
 ⚠ **値の集合で突き合わせないと嘘になる**（`replace:false` のタグは足し合わせなので、
@@ -138,7 +138,7 @@ def mods_of(entries):
     """`mods.toml` から (modId, 版の書き方) を採り、`${file.jarVersion}` を解く。
 
     ⚠ Forge は `${file.jarVersion}` を MANIFEST の `Implementation-Version` から採る。
-    ⚠ **無ければ `NONE` になる**（この道具が最初に捕まえたのがそれ）。
+    ⚠ **無ければ `NONE` になる**（このツールが最初に捕まえたのがそれ）。
     """
     toml = entries.get("META-INF/mods.toml")
     if toml is None:
@@ -435,7 +435,7 @@ def self_test():
         return 0 if ok else 1
 
     # ⚠⚠ **まず陰性対照**: いまの誤り（`${file.jarVersion}` が解けない）だけを直した形が
-    #    0 になること。⚠ **これが 0 にならないなら、この道具の判定が壊れている。**
+    #    0 になること。⚠ **これが 0 にならないなら、このツールの判定が壊れている。**
     fixed = dict(base)
     fixed["META-INF/mods.toml"] = _repair_toml(
         base["META-INF/mods.toml"].decode("utf-8", "replace"), src).encode("utf-8")
