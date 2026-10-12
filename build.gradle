@@ -159,7 +159,7 @@ allprojects {
 	tasks.withType(JavaCompile).configureEach {
 		options.encoding = 'UTF-8'
 	}
-	// ⚠⚠ **資源を写すときも UTF-8 で書く**（2026-09-01）。
+	// ⚠⚠ **資源をコピーするときも UTF-8 で書く**（2026-09-01）。
 	//
 	// ⚠ **なぜ要るか（実物で確かめた）**: `processResources` は `expand()` で
 	// テンプレートを展開するとき、⚠⚠ **書き出しに機械の既定の文字コードを使う**
@@ -276,7 +276,7 @@ project(":apoli") {
 		// ⚠ 当部の変更（2026-09-01）: 版の**範囲**をやめ、実版＋`ranged` に書き換えた。
 		//    ⚠⚠ **Modrinth の Maven は `maven-metadata.xml` に GET は 200、HEAD は 404 を返す**
 		//    （実測。対照として `maven.minecraftforge.net` は HEAD も 200）。
-		//    ⚠ Gradle は写しが在ると HEAD で存在を確かめてから読むので、
+		//    ⚠ Gradle はコピーが在ると HEAD で存在を確かめてから読むので、
 		//    ⚠⚠ **空のホームでは1回だけ通り、動的版の期限が切れた後は必ず落ちる**
 		//    （`Could not find any matches ... as no versions ... are available`）。
 		//    ⚠ `--refresh-dependencies` では直らない（実測）。
@@ -351,7 +351,7 @@ project(":origins") {
 		// ⚠ 当部の変更（2026-09-01）: 版の**範囲**をやめ、実版＋`ranged` に書き換えた。
 		//    ⚠⚠ **Modrinth の Maven は `maven-metadata.xml` に GET は 200、HEAD は 404 を返す**
 		//    （実測。対照として `maven.minecraftforge.net` は HEAD も 200）。
-		//    ⚠ Gradle は写しが在ると HEAD で存在を確かめてから読むので、
+		//    ⚠ Gradle はコピーが在ると HEAD で存在を確かめてから読むので、
 		//    ⚠⚠ **空のホームでは1回だけ通り、動的版の期限が切れた後は必ず落ちる**
 		//    （`Could not find any matches ... as no versions ... are available`）。
 		//    ⚠ `--refresh-dependencies` では直らない（実測）。
@@ -387,7 +387,7 @@ project(":origins") {
 		compileOnly "curse.maven:harvest-with-ease-602171:5968744"
 		// ⚠ Tough As Nails（渇きの API）。⚠ **maven にしない**——
 		//    ⚠ 実物と同じ版でコンパイルしたい（渇きの値を上流の「浄水の瓶」に合わせている）。
-		//    写した元: dev/instance/mods/ToughAsNails-forge-1.20.1-9.2.0.171.jar
+		//    コピーした元: dev/instance/mods/ToughAsNails-forge-1.20.1-9.2.0.171.jar
 		compileOnly files("${rootProject.projectDir}/libs/toughasnails.jar")
 		// ⚠⚠ **Easy Magic（2026-09-09 に足した）。** 司書の「予告がすべて読める」のため。
 		//    ⚠ この構成のエンチャントテーブルは Easy Magic が差し替えており、
@@ -442,7 +442,7 @@ project(":origins") {
 }
 
 // ⚠⚠ **当部が足した（2026-09-08）。`origins-classes` をソースから建てるため。**
-//    ⚠ 依存は `origins-classes/build.gradle`（消した）から写した。
+//    ⚠ 依存は `origins-classes/build.gradle`（消した）からコピーした。
 //    ⚠ 上流を取り込むとき、このブロックは当部の追加分として残す。
 project(":origins-classes") {
 	evaluationDependsOn(":origins")

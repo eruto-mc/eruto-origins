@@ -21,7 +21,7 @@
 Mixin 本体の注釈処理に登録され、その `method=` と `@At(target=)` が refmap へ書かれる。
 
 ⚠⚠ **class の比較ではすり抜ける**——refmap は class ではない。
-⚠ 実際、段2 の判定（`compare_with_released.py`）は**差を検出していた**のに、
+⚠ 実際、段階2 の判定（`compare_with_released.py`）は**差を検出していた**のに、
 ⚠⚠ **許しの表が `apoli.refmap.json` を丸ごと通していた**（理由は「並びが変わる」）。
 
 ## ⚠ 見る範囲（2026-09-25 に apoli だけから 4 つへ広げた）
@@ -330,7 +330,7 @@ def run(jar=None, only=None, detail=False):
 
 
 def self_test():
-    """⚠ 陰性＝配っている jar（欠け 0）／陽性＝refmap から1件消した写し（欠け 1）／判定の対照。"""
+    """⚠ 陰性＝配っている jar（欠け 0）／陽性＝refmap から1件消したコピー（欠け 1）／判定の対照。"""
     print("== 自己試験 ==")
     ng = 0
     wants = {name: scan_sources(roots) for name, roots, _r in MODULES}
@@ -394,7 +394,7 @@ def self_test():
             if first is None:
                 first = (name, got[1], want)
 
-    # ⚠ 陽性: refmap から1件消した写しを作り、⚠ **その1件を拾えるか**
+    # ⚠ 陽性: refmap から1件消したコピーを作り、⚠ **その1件を拾えるか**
     if first:
         name, d, want = first
         cls, need = sorted(want.items())[0]
@@ -404,7 +404,7 @@ def self_test():
         broken.get("data", {}).get("searge", {}).get(cls, {}).pop(ref, None)
         miss = missing_in(broken, want)
         if [(c, r) for c, r, _w in miss] == [(cls, ref)]:
-            print("  ok 陽性 %s の refmap から1件消した写しで、その1件だけを拾った（%s）" % (name, ref[:50]))
+            print("  ok 陽性 %s の refmap から1件消したコピーで、その1件だけを拾った（%s）" % (name, ref[:50]))
         else:
             print("  NG 陽性 1件消したのに %d 件拾った" % len(miss))
             ng += 1
