@@ -74,10 +74,13 @@ sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 # ⚠ 当部の手元のフォルダ。⚠ **作者の手元の置き方を前提にしている**——この置き場は
-#   当部のフォルダの `eruto-mc/eruto-origins` に在るので、2つ上がそのフォルダになる。
+#   `eruto-mc/mods/eruto-origins` に在り、当部のフォルダは2つ上の `minecraft-club/`
+#   （2026-10 に移る前は `eruto-mc/eruto-origins` で、2つ上がそのフォルダだった。どちらでも当たるようにしてある）。
 #   ⚠ 置き方が違うなら、環境変数 `ERUTO_CLUB_DIR` にそのフォルダを入れて読み替える。
 #   ⚠ 公開している置き場なので、手元の絶対パス（非公開のフォルダ名を含む）を書かない（2026-09-25）。
-MC = os.environ.get("ERUTO_CLUB_DIR") or os.path.abspath(os.path.join(REPO, "..", ".."))
+_UP2 = os.path.abspath(os.path.join(REPO, "..", ".."))
+MC = os.environ.get("ERUTO_CLUB_DIR") or (
+    _UP2 if os.path.isdir(os.path.join(_UP2, "worlds")) else os.path.join(_UP2, "minecraft-club"))
 MODS = os.path.join(MC, "worlds", "world-3", "dev", "instance", "mods")
 MOR_PATCH = os.path.join(MC, "worlds", "world-3", "dev", "work", "mor_patch",
                          "build_mor_patch.py")

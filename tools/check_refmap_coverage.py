@@ -79,7 +79,10 @@ REPO = os.path.dirname(HERE)
 BUNDLE = os.path.join(REPO, "build", "bundle")
 # ⚠ 当部の手元のフォルダは `build_bundle.py` と同じ求め方（作者の手元の置き方が前提・
 #   違うなら環境変数 `ERUTO_CLUB_DIR` で読み替える）。⚠ 公開の置き場なので手元の絶対パスを書かない。
-MODS = os.path.join(os.environ.get("ERUTO_CLUB_DIR") or os.path.abspath(os.path.join(REPO, "..", "..")),
+_UP2 = os.path.abspath(os.path.join(REPO, "..", ".."))
+# ⚠ 2026-10 に当部のフォルダが `eruto-mc/minecraft-club/` へ移った。2つ上に `worlds/` が無ければそちらを見る
+MODS = os.path.join(os.environ.get("ERUTO_CLUB_DIR") or (
+    _UP2 if os.path.isdir(os.path.join(_UP2, "worlds")) else os.path.join(_UP2, "minecraft-club")),
                     "worlds", "world-3", "dev", "instance", "mods")
 
 # (名前, ソースの根, refmap の名前)。⚠ 置き場を足したらここに1行足す。
