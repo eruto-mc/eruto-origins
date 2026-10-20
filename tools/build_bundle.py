@@ -198,10 +198,10 @@ DECIDED = {
     #
     # ⚠ 段階4 の前は「datapack が**後から**読まれて勝つので、jar 側でどちらを採っても同じ」だった。
     # ⚠⚠ **jar へ入れた瞬間、その「後から」が無くなる**——同じ zip の中に1つしか置けないので、
-    # ⚠ ここで上流を採ると**当部の定義が消える。**
+    # ⚠ ここで本家を採ると**当部の定義が消える。**
     #
     # ⚠ 外した3件（`DECIDED` から消して、規則に任せた）:
-    #   `data/origins/origin_layers/origin.json`   … ⚠ 上流10種 対 当部17種（`replace:true`）
+    #   `data/origins/origin_layers/origin.json`   … ⚠ 本家10種 対 当部17種（`replace:true`）
     #   `data/origins/powers/light_armor.json`     … ⚠ 優先度 0 対 200
     #   `data/origins/powers/claustrophobia.json`  … ⚠ 同上
     #
@@ -209,14 +209,14 @@ DECIDED = {
     # ⚠⚠ **どちらも Minecraft と同じ決め方**なので、当部が手で決めるより間違えにくい。
     # ⚠⚠ **2026-09-01 に理由文を書き直した。前の理由は誤りだった。**
     #
-    # ⚠ 前は「当部のコピーは**上流と中身が同じ**と機械で確かめた」と書いていたが、
+    # ⚠ 前は「当部のコピーは**本家と中身が同じ**と機械で確かめた」と書いていたが、
     # ⚠⚠ **「当部のコピー」が2つ在るのを1つと取り違えていた**（実物を開いて確認）:
     #
-    #     origins-forge      loading_priority=0    hidden=false  compare_to=2    上流
+    #     origins-forge      loading_priority=0    hidden=false  compare_to=2    本家
     #     shifting_origins   loading_priority=100  hidden=true   compare_to=999  ⚠ **無効化した版**
-    #     origins_setup      loading_priority=200  hidden=false  compare_to=2    上流と同じ内容
+    #     origins_setup      loading_priority=200  hidden=false  compare_to=2    本家と同じ内容
     #
-    # ⚠ **バイト一致の組は無し。** 上流と同じなのは `origins_setup` のほうで、
+    # ⚠ **バイト一致の組は無し。** 本家と同じなのは `origins_setup` のほうで、
     # ⚠ ここで消しているのは `shifting_origins`（無効化した版）。
     #
     # ⚠ 正しい理由は **2026-08-29 の決定**（設計書「重複5件の決着」）——
@@ -225,39 +225,39 @@ DECIDED = {
     # ⚠ 挙動は変わらない: `origins_setup` の 200 が 0 も 100 も上回るので、
     # ⚠ いまも（0/100/200 のうち）200 が勝っており、100 を落としても 200 が勝つ。
     # ⚠⚠ **ただし段階4で `origins_setup` を jar へ入れるときは、200 の側を残すこと**
-    #    （1つの jar に2つ置けないので、0 の側を残すと無効化ではなく**上流の定義**に戻る）。
+    #    （1つの jar に2つ置けないので、0 の側を残すと無効化ではなく**本家の定義**に戻る）。
     # ⚠⚠ **`data/origins-classes/powers/explorer_kit.json` は 2026-09-09 に消した。**
-    #    ⚠ 当部のコピーは「上流の開始装備を殺すための無害なコピー」で、
+    #    ⚠ 当部のコピーは「本家の開始装備を殺すための無害なコピー」で、
     #    ⚠⚠ **同じ日に探索者の一覧から `origins-classes:explorer_kit` を外した**ので、
-    #      押さえる相手が居なくなった（上流の定義は jar に残るが、誰にも配られない）。
+    #      押さえる相手が居なくなった（本家の定義は jar に残るが、誰にも配られない）。
     #    ⚠ **ぶつからなくなったので、ここに書いてあると嘘になる**
     #      （`check_decided_live()` が名指しする）。
     "data/origins-classes/powers/more_planks_from_logs.json": (
         # ⚠ 当部の側は `origins` のソースの木に在る（`shiftingorigins` を受け入れた後なので、
         #   explorer_kit と同じく **origins が建てた jar** から出てくる）。
         "origins-forge-",
-        "⚠⚠ **上流の定義を無害な印で上書きしている**（2026-09-05。"
+        "⚠⚠ **本家の定義を無害な印で上書きしている**（2026-09-05。"
         "⚠ 型は 2026-09-09 に `apoli:simple` → `shiftingorigins:extra_planks` へ替えた。"
         "中身は同じ `DummyPower` で挙動は変わらない。⚠ **機械が「印」と「残骸」を"
         "見分けられるようにするため**）。"
-        "⚠ 上流は `apoli:modify_crafting` で、その `ModifiedCraftingRecipe` は "
+        "⚠ 本家は `apoli:modify_crafting` で、その `ModifiedCraftingRecipe` は "
         "`TransientCraftingContainer` でなければ何もしない。⚠ **Visual Workbench が作業台の器を "
         "`ForwardingCraftingContainer` に差し替えている**ので、作業台では1枚も増えていなかった"
         "（部員からの報告で判明。実物の class をバイト列で確認）。"
         "⚠ 増量は当部の `CraftingResultMixin` が受け持つ——"
-        "⚠⚠ **上流を残すと、持ち物の 2×2 では上流が6枚にした上へ当部が2枚足して8枚になりうる。**"
+        "⚠⚠ **本家を残すと、持ち物の 2×2 では本家が6枚にした上へ当部が2枚足して8枚になりうる。**"
         "⚠ `hidden` は立てない（能力の一覧と日本語の説明はこれまでどおり出す）"),
     "data/origins-classes/powers/trade_availability.json": (
         # ⚠ 当部の側は `origins` のソースの木（`shiftingorigins`）に在る。
         "origins-forge-",
-        "⚠⚠ **上流の定義を無害な印で上書きしている**（2026-09-07。"
+        "⚠⚠ **本家の定義を無害な印で上書きしている**（2026-09-07。"
         "⚠ 型は 2026-09-09 に `apoli:simple` → `shiftingorigins:merchant_stock` へ替えた）。"
-        "⚠ 上流は `origins_classes:infinite_trade`＝中身の無い power で、働いているのは "
+        "⚠ 本家は `origins_classes:infinite_trade`＝中身の無い power で、働いているのは "
         "`AbstractVillagerMixin` が `notifyTrade` の末尾で `--offer.uses` すること"
         "（＝**絶対に減らない**）。⚠⚠ **あなたの判断（2026-09-07）で「確率で減らない」へ変えた。**"
         "⚠ 減らさない確率は `net.erutobusiness.shiftingorigins.MerchantStock` が受け持ち、"
         "設定は `shiftingorigins-server.toml` の `merchant.stockKeptChance`（既定 0.5）。"
-        "⚠⚠ **上流を残すと、あちらが先に全部戻すので確率にならない。**"
+        "⚠⚠ **本家を残すと、あちらが先に全部戻すので確率にならない。**"
         "⚠ `hidden` は立てない（能力の一覧と日本語の説明はこれまでどおり出す）"),
     # ── 段階4 で出たぶつかりのうち、⚠⚠ **まだ人が決める必要が在るもの**（2026-09-01）──
     #
@@ -270,7 +270,7 @@ DECIDED = {
     "data/origins-classes/origin_layers/class.json": (
         "datapack:origins_setup",
         "⚠⚠ **当部の層の定義**（`default_origin`・`allow_random`・`name`・"
-        "`missing_name` ほかを持つ。上流は4項目、当部は10項目）。"
+        "`missing_name` ほかを持つ。本家は4項目、当部は10項目）。"
         "⚠ **層は足し合わせる種類**なので差し替えない——だから今も人が決める"),
     # ⚠ `pack.png` の宣言は 2026-09-01 に消した——⚠⚠ **もうぶつかっていない**
     #   （`origins-classes` の1本しか持っていない。⚠ `check_decided_live` が名指しした）。
@@ -485,9 +485,9 @@ def merge_layer(owners):
     ⚠ `loading_priority` の小さい順に畳む。⚠ **欄は「後の寄与が値を持っていれば後が勝つ」。**
     ⚠⚠ **`origins` は足し合わせ**——ただし ⚠ **`replace:true` の寄与が来たら、そこまでを捨てる。**
 
-    ⚠ **上流の規則をコピーしている。** ⚠ コピーであることを承知で書く理由:
+    ⚠ **本家の規則をコピーしている。** ⚠ コピーであることを承知で書く理由:
     ⚠⚠ **1つの zip に2枚置けない以上、ここで畳むしかない。**
-    ⚠ 上流が規則を変えたら、⚠ **ここも直す**（`PartialLayer.merge` を見る）。
+    ⚠ 本家が規則を変えたら、⚠ **ここも直す**（`PartialLayer.merge` を見る）。
     """
     SCALAR = ("order", "enabled", "name", "missing_name", "missing_description",
               "allow_random", "allow_random_unchoosable", "default_origin",
@@ -794,7 +794,7 @@ BUILT = {
     #
     # ⚠⚠ **MOR を 2026-09-02 に足した**（段階6 の1件目）。
     #
-    # ⚠ **なぜ要るか**: 上流 6.7.x は Connector 用で当部の土台では動かないので、
+    # ⚠ **なぜ要るか**: 本家の 6.7.x は Connector 用で当部の土台では動かないので、
     #   ⚠ **直しは1件ずつ当部の fork（`eruto-mc/Medieval-Origins-Revival`）へ書き戻す。**
     #   ⚠⚠ **配布 jar を混ぜている限り、その書き戻しは出荷物に入らない。**
     #
@@ -821,12 +821,12 @@ BUILT = {
     #
     # ⚠ **なぜ要るか**: ソースは在るのに建てていなかったので、
     #   ⚠⚠ **Java のコードを直す口が1つも無かった**（datapack で直せるのは JSON だけ）。
-    #   ⚠ 上流の origins-classes は 2023-12 で止まっているので、直す必要が出たら当部が直すしかない。
+    #   ⚠ 本家の origins-classes は 2023-12 で止まっているので、直す必要が出たら当部が直すしかない。
     #
     # ⚠ ⚠ **足した当日（2026-09-08）は「datapack の上書き 6 件をソースへ畳むため」と書いたが、
     #   ⚠⚠ その理由は同じ日に実測で消えた**——上書き 56 件を全部消して `build.py` を回したら、
     #   ⚠ **同じ 56 件が再生成された**（コピーは生成物で、凍ってはいなかった）。
-    #   ⚠ 畳む利点は「上流の更新が git の衝突として見える」ことだけで、⚠ **急ぐ話ではない**。
+    #   ⚠ 畳む利点は「本家の更新が git の衝突として見える」ことだけで、⚠ **急ぐ話ではない**。
     #
     # ⚠ **建て方**: `./gradlew :origins-classes:build`（ルートのサブプロジェクトにした）。
     #   ⚠ 名前が `origins-classes-forge-1.2.1` → **`-1.20.1-1.2.1`** に変わる
@@ -1058,12 +1058,12 @@ def find_nested():
         winners.append(best)
 
     # ⚠⚠ **`DISSOLVE` に書いたのに1本も当たらなかったら落ちる**（黙って通さない）。
-    #    ⚠ 上流が同梱をやめた日に、この表が**嘘の記述**として残るのを防ぐ。
+    #    ⚠ 作者が同梱をやめた日に、この表が**嘘の記述**として残るのを防ぐ。
     missing = sorted(set(DISSOLVE) - {artifact_of(n)[0] for n, _r, _s in melted})
     if missing:
         raise SystemExit(
             "!! `DISSOLVE` に書いてあるのに入れ子で見つからない: %s\n"
-            "⚠ **表が古い。** 上流が同梱をやめたなら、この行を消す。"
+            "⚠ **表が古い。** 作者が同梱をやめたなら、この行を消す。"
             % "／".join(missing))
     return chosen, dropped, winners, melted
 
@@ -1072,7 +1072,7 @@ def gather_upstream():
     """上の 7 本と溶かす土台の入り口を集める（⚠ **当部の分はまだ入れない**）。
 
     ⚠ `tools/show_collision.py` がこれを読む——当部の分で差し替える**前の**持ち主を並べるため
-    （差し替えた後の `gather()` の結果には、上流の中身が残らない）。
+    （差し替えた後の `gather()` の結果には、本家の中身が残らない）。
     返り値は sink と、`find_nested()` の4つ（採った土台・落とした土台・勝った版・溶かす物）。
     """
     chosen, dropped, winners, melted = find_nested()
@@ -1295,7 +1295,7 @@ def resolve_refmap(name, text, have):
         [main/WARN] [mixin/]: Reference map '${mod_id}.refmap.json'
         for medievalorigins.mixins.json could not be read.
 
-    ⚠ MOR が上流で `refmap: "${mod_id}.refmap.json"` と書いており、
+    ⚠ MOR が本家で `refmap: "${mod_id}.refmap.json"` と書いており、
     ⚠ **`${mod_id}` が解かれないまま配られている**（当部の書き換えではない）。
 
     ⚠ **いまは実害が無い**——⚠⚠ **この設定は mixin を 0 枚しか持たない**ので、

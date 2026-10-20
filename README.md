@@ -1,14 +1,14 @@
 > ## ⚠ これは当部の統合版です（eruto-mc / eruto-origins）
 >
-> 上流: [EdwinMindcraft/origins-forge](https://github.com/EdwinMindcraft/origins-forge)
-> ／ 枝 `eruto/world3-1.20.1` ／ ライセンスは上流に従う（MIT）。
-> **以下は上流の README です。**
+> 本家: [EdwinMindcraft/origins-forge](https://github.com/EdwinMindcraft/origins-forge)
+> ／ 枝 `eruto/world3-1.20.1` ／ ライセンスは本家に従う（MIT）。
+> **以下は本家の README です。**
 >
 > ### なぜ作ったか
 >
 > 第3ワールドの Origins まわりが **jar 8本・datapack 2つ・リソースパック・config** に
 > 散っており、同じ id を2か所が別々に定義している件が5件（中身は5件とも違う）在った。
-> ⚠ 上流の `origins-forge` は **2024-05-04 の 1.10.0.9 で止まっている**ので、
+> ⚠ 本家の `origins-forge` は **2024-05-04 の 1.10.0.9 で止まっている**ので、
 > 直すには当部がソースを持つしかない。設計は当部の手元の設計文書
 > （`origins-consolidation.md`。公開していない）。
 >
@@ -16,22 +16,22 @@
 >
 > | 段階 | やったこと | 判定 |
 > | - | - | - |
-> | **1** | 土台を ⚠ **配布された 1.10.0.9 の地点**（`67e2e0b`）に固定して建てた。⚠ **枝先はその2か月後で、jar になっていない修正が3件**入っているため（下記）。当部が入れた変更は AEA の取得先だけ（上流の `9dc15fe`。⚠ **元のホストが消えていてビルドが落ちる**。`build.gradle` の4行で、コードも版も変わらない） | `tools/compare_with_released.py` が **OK**（説明の付かない差 0。⚠ 違いはすべて javac の版で説明が付いた） |
+> | **1** | 土台を ⚠ **配布された 1.10.0.9 の地点**（`67e2e0b`）に固定して建てた。⚠ **枝先はその2か月後で、jar になっていない修正が3件**入っているため（下記）。当部が入れた変更は AEA の取得先だけ（本家の `9dc15fe`。⚠ **元のホストが消えていてビルドが落ちる**。`build.gradle` の4行で、コードも版も変わらない） | `tools/compare_with_released.py` が **OK**（説明の付かない差 0。⚠ 違いはすべて javac の版で説明が付いた） |
 > | **2** | ⚠⚠ **jar の中の class を差し替える手術をやめ、ソースから建てるようにした。** submodule `apoli` を当部の fork へ。`build.gradle` に MixinExtras を `compileOnly` で足した | 配っている `-eruto1` と突き合わせて **OK**。⚠ **差し替えていた5つの mixin のうち4つがバイト単位で一致** |
 >
 > ⚠ 段階2で1つ見つけた: **パッチの理由を書いた注釈が、fork へ push したときに落ちていた**
 > （当部が実際にビルドしたコピーには在った）。apoli 側で戻してある。
 >
-> ⚠ 当部の枝 `feat/wrapoperation-render-compat` には**上流の未リリース修正 #402 が混ざっていた**ので、
+> ⚠ 当部の枝 `feat/wrapoperation-render-compat` には**本家の未リリース修正 #402 が混ざっていた**ので、
 > **手術だけを取り出した枝 `eruto/world3-1.20.1`** を作ってそちらを指している。
 >
 > submodule `calio` も当部の fork（[eruto-mc/calio](https://github.com/eruto-mc/calio) の枝 `eruto/world3-1.20.1`）へ向けた（2026-09-29）。
 > ログインで登録データを受け取るとき、Netty のスレッドとメインスレッドが同じ表へ鍵なしで書き、
 > およそ 100 回に 1 回 `UnitListCodec` の NullPointerException で入れなかったのを直すため（中身は calio の `93d80b3`）。
 >
-> ### 上流の枝先に在る、jar になっていない修正3件
+> ### 元の枝先に在る、jar になっていない修正3件
 >
-> ⚠ **段階6（上流からの取り込み）で見る。いまは入れていない。**
+> ⚠ **段階6（本家からの取り込み）で見る。いまは入れていない。**
 >
 > | 課題 | 題名 |
 > | - | - |

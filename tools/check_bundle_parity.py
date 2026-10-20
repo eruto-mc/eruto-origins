@@ -99,7 +99,7 @@ MANIFEST_DROP_OK = {
     "Implementation-Timestamp": "建てた時刻。混ぜた物には意味が無い",
     "Built-On-Java": "MOR が自分で足している覚え書き。Forge は読まない",
     "Build-On-Minecraft": "MOR が自分で足している覚え書き。Forge は読まない",
-    "Timestampe": "MOR の綴り違い（上流のまま）。誰も読まない",
+    "Timestampe": "MOR の綴り違い（本家のまま）。誰も読まない",
     "MixinConfigs": "作り直している。④ で登録を数える",
 }
 
